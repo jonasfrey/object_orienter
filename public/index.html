@@ -421,6 +421,7 @@
           <input type="range" id="tx-rotz" min="0" max="360" value="0" step="1">
           <span class="tx-val" id="tx-rotz-val">0°</span>
         </div>
+        <button class="tx-reset" id="tx-auto" title="Auto-orient using principal axes (PCA)">Auto-orient</button>
         <button class="tx-reset" id="tx-reset">Reset</button>
       </div>
     </div>
@@ -1143,6 +1144,83 @@ function centerGeometryAtOrigin(geom) {
   geom.computeBoundingBox();
 }
 
+// Jacobi eigenvalue decomposition for symmetric 3x3 matrices.
+// Returns eigenvalue/eigenvector pairs sorted by eigenvalue descending.
+function jacobiEigen3(cxx, cxy, cxz, cyy, cyz, czz) {
+  const a = [[cxx, cxy, cxz], [cxy, cyy, cyz], [cxz, cyz, czz]];
+  const v = [[1,0,0],[0,1,0],[0,0,1]];
+  for (let iter = 0; iter < 50; iter++) {
+    let p = 0, q = 1, maxOff = Math.abs(a[0][1]);
+    if (Math.abs(a[0][2]) > maxOff) { p = 0; q = 2; maxOff = Math.abs(a[0][2]); }
+    if (Math.abs(a[1][2]) > maxOff) { p = 1; q = 2; maxOff = Math.abs(a[1][2]); }
+    if (maxOff < 1e-12) break;
+    const theta = (a[q][q] - a[p][p]) / (2 * a[p][q]);
+    const t = theta >= 0
+      ? 1 / (theta + Math.sqrt(theta * theta + 1))
+      : 1 / (theta - Math.sqrt(theta * theta + 1));
+    const c = 1 / Math.sqrt(t * t + 1);
+    const s = t * c;
+    const app = a[p][p], aqq = a[q][q], apq = a[p][q];
+    a[p][p] = c*c*app - 2*s*c*apq + s*s*aqq;
+    a[q][q] = s*s*app + 2*s*c*apq + c*c*aqq;
+    a[p][q] = a[q][p] = 0;
+    for (let i = 0; i < 3; i++) {
+      if (i !== p && i !== q) {
+        const aip = a[i][p], aiq = a[i][q];
+        a[i][p] = a[p][i] = c*aip - s*aiq;
+        a[i][q] = a[q][i] = s*aip + c*aiq;
+      }
+      const vip = v[i][p], viq = v[i][q];
+      v[i][p] = c*vip - s*viq;
+      v[i][q] = s*vip + c*viq;
+    }
+  }
+  const eigs = [
+    { val: a[0][0], vec: new THREE.Vector3(v[0][0], v[1][0], v[2][0]) },
+    { val: a[1][1], vec: new THREE.Vector3(v[0][1], v[1][1], v[2][1]) },
+    { val: a[2][2], vec: new THREE.Vector3(v[0][2], v[1][2], v[2][2]) },
+  ];
+  eigs.sort((a, b) => b.val - a.val);
+  return eigs;
+}
+
+// PCA-based auto-orient: align the geometry's principal axes with world axes.
+// Largest variance -> Y, middle -> X, smallest -> Z. Signs picked so most
+// vertex mass falls on the positive side of each axis; Z made right-handed.
+function autoOrientGeometry() {
+  if (!rawUploadedGeometry) return;
+  const pos = rawUploadedGeometry.getAttribute('position');
+  const n = pos.count;
+  let cx = 0, cy = 0, cz = 0;
+  for (let i = 0; i < n; i++) { cx += pos.getX(i); cy += pos.getY(i); cz += pos.getZ(i); }
+  cx /= n; cy /= n; cz /= n;
+  let cxx=0, cxy=0, cxz=0, cyy=0, cyz=0, czz=0;
+  for (let i = 0; i < n; i++) {
+    const x = pos.getX(i) - cx, y = pos.getY(i) - cy, z = pos.getZ(i) - cz;
+    cxx += x*x; cxy += x*y; cxz += x*z;
+    cyy += y*y; cyz += y*z; czz += z*z;
+  }
+  const eigs = jacobiEigen3(cxx, cxy, cxz, cyy, cyz, czz);
+  const yAxis = eigs[0].vec.clone().normalize();
+  const xAxis = eigs[1].vec.clone().normalize();
+  let sumY = 0, sumX = 0;
+  for (let i = 0; i < n; i++) {
+    const x = pos.getX(i) - cx, y = pos.getY(i) - cy, z = pos.getZ(i) - cz;
+    sumY += x*yAxis.x + y*yAxis.y + z*yAxis.z;
+    sumX += x*xAxis.x + y*xAxis.y + z*xAxis.z;
+  }
+  if (sumY < 0) yAxis.negate();
+  if (sumX < 0) xAxis.negate();
+  const zAxis = new THREE.Vector3().crossVectors(xAxis, yAxis).normalize();
+  xAxis.crossVectors(yAxis, zAxis).normalize();
+  // Rotation that maps the principal axes to world (X,Y,Z): inverse of the basis.
+  const rot = new THREE.Matrix4().makeBasis(xAxis, yAxis, zAxis).transpose();
+  rawUploadedGeometry.applyMatrix4(rot);
+  centerGeometryAtOrigin(rawUploadedGeometry);
+  resetTransformSliders();
+  onTransformChanged();
+}
+
 function getTriangleCount(geom) {
   if (!geom) return 0;
   const idx = geom.index;
@@ -1688,6 +1766,7 @@ function init() {
     resetTransformSliders();
     onTransformChanged();
   });
+  document.getElementById('tx-auto').addEventListener('click', autoOrientGeometry);
 
   // Load saved projects from server on startup
   refreshProjectList();
