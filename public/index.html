@@ -727,11 +727,13 @@ async function saveProject() {
   const state = getProjectState();
   if (currentProjectId) state.id = currentProjectId;
 
-  // Export raw (untransformed) geometry as binary STL, encode as base64
+  // Export raw (untransformed) geometry as binary STL, encode as base64.
+  // STLExporter returns a DataView in binary mode; use .buffer to get raw bytes.
   const mesh = new THREE.Mesh(rawUploadedGeometry);
   const exporter = new STLExporter();
-  const stlBuffer = exporter.parse(mesh, { binary: true });
-  state.geometryStlBase64 = bytesToBase64(new Uint8Array(stlBuffer));
+  const stlDataView = exporter.parse(mesh, { binary: true });
+  const stlBytes = new Uint8Array(stlDataView.buffer, stlDataView.byteOffset, stlDataView.byteLength);
+  state.geometryStlBase64 = bytesToBase64(stlBytes);
 
   try {
     const result = await apiSaveProject(state);
@@ -798,6 +800,9 @@ async function loadProjectFromServer(id) {
     const state = await apiGetProject(id);
     currentProjectId = id;
 
+    if (!state.geometryStlBase64) {
+      throw new Error('This project has no saved geometry (was saved before the save bug was fixed). Please re-save.');
+    }
     // Decode base64 STL
     const binary = atob(state.geometryStlBase64);
     const bytes = new Uint8Array(binary.length);
@@ -908,8 +913,11 @@ async function loadProject(file) {
     const state = JSON.parse(text);
     currentProjectId = null; // file load, not server-tracked
 
-    if (!state.version || !state.geometryStlBase64) {
-      throw new Error('Invalid project file: missing version or geometry data');
+    if (!state.version) {
+      throw new Error('Invalid project file: missing version');
+    }
+    if (!state.geometryStlBase64) {
+      throw new Error('Project file has no embedded geometry');
     }
 
     // Decode base64 STL back to binary
