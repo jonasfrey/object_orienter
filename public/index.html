@@ -812,6 +812,7 @@ async function loadProjectFromServer(id) {
     // Dispose old
     if (uploadedGeometry) uploadedGeometry.dispose();
     if (rawUploadedGeometry) rawUploadedGeometry.dispose();
+    centerGeometryAtOrigin(geometry);
     rawUploadedGeometry = geometry;
     originalFilename = state.originalFilename || null;
 
@@ -925,6 +926,7 @@ async function loadProject(file) {
     // Dispose old geometries
     if (uploadedGeometry) uploadedGeometry.dispose();
     if (rawUploadedGeometry) rawUploadedGeometry.dispose();
+    centerGeometryAtOrigin(geometry);
     rawUploadedGeometry = geometry;
     originalFilename = state.originalFilename || null;
 
@@ -1129,6 +1131,16 @@ function normalizeGeometry(geom) {
   const cz = (bb.max.z + bb.min.z) / 2;
   g.translate(-cx, -bb.min.y, -cz);
   return g;
+}
+
+function centerGeometryAtOrigin(geom) {
+  geom.computeBoundingBox();
+  const bb = geom.boundingBox;
+  const cx = (bb.max.x + bb.min.x) / 2;
+  const cy = (bb.max.y + bb.min.y) / 2;
+  const cz = (bb.max.z + bb.min.z) / 2;
+  geom.translate(-cx, -cy, -cz);
+  geom.computeBoundingBox();
 }
 
 function getTriangleCount(geom) {
@@ -1453,6 +1465,7 @@ async function handleFile(file) {
     // Dispose old
     if (uploadedGeometry) uploadedGeometry.dispose();
     if (rawUploadedGeometry) rawUploadedGeometry.dispose();
+    centerGeometryAtOrigin(geometry);
     rawUploadedGeometry = geometry;
     resetTransformSliders();
 
