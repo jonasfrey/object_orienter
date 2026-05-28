@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "name": "test",
+  "savedAt": "2026-05-28T09:31:06.581Z",
+  "originalFilename": "bone1.stl",
+  "transform": {
+    "scale": 1,
+    "rotX": 0,
+    "rotY": 0,
+    "rotZ": 0
+  },
+  "parameters": {
+    "ring": {
+      "radius": 9,
+      "count": 12
+    },
+    "bracelet": {
+      "radius": 35,
+      "count": 12
+    },
+    "sleeve": {
+      "count": 36,
+      "rotations": 3,
+      "scale": 1
+    }
+  }
+}

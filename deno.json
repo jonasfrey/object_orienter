@@ -1,0 +1,5 @@
+{
+  "tasks": {
+    "start": "deno cache server.ts && deno run --allow-net --allow-read --allow-write server.ts"
+  }
+}

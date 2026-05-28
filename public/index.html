@@ -1,0 +1,1688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D Object Remixer</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #0d0d1a;
+    color: #c8c8d4;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  .app { max-width: 1400px; margin: 0 auto; padding: 16px; }
+
+  /* Upload */
+  .upload-section {
+    background: #151528;
+    border: 1px solid #2a2a44;
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 12px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    min-height: 320px;
+  }
+  .dropzone {
+    border: 2px dashed #3a3a5c;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+    min-height: 280px;
+    gap: 10px;
+  }
+  .dropzone:hover, .dropzone.drag-over { border-color: #6a6aff; background: #1a1a35; }
+  .dropzone-icon { font-size: 40px; opacity: 0.5; }
+  .dropzone-text { font-size: 14px; opacity: 0.6; }
+  .file-btn {
+    background: #2a2a50;
+    color: #c8c8ff;
+    border: 1px solid #4a4a70;
+    padding: 8px 18px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: background .2s;
+  }
+  .file-btn:hover { background: #3a3a60; }
+  #file-input { display: none; }
+
+  .upload-preview {
+    background: #0d0d1a;
+    border-radius: 8px;
+    position: relative;
+    min-height: 280px;
+    overflow: hidden;
+  }
+  .upload-preview canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .stats-bar {
+    position: absolute;
+    bottom: 44px;
+    left: 8px; right: 8px;
+    display: flex;
+    gap: 20px;
+    padding: 8px 12px;
+    background: rgba(10,10,22,0.92);
+    border-radius: 6px;
+    font-size: 12px;
+    color: #888;
+    justify-content: center;
+    flex-wrap: wrap;
+    z-index: 2;
+    pointer-events: auto;
+  }
+  .stats-bar span { white-space: nowrap; }
+  .stats-bar .val { color: #aaaaff; font-weight: 600; }
+
+  .transform-bar {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    z-index: 2;
+    display: flex;
+    gap: 8px;
+    padding: 5px 12px;
+    background: rgba(10,10,22,0.94);
+    align-items: center;
+    flex-wrap: wrap;
+    font-size: 11px;
+    pointer-events: auto;
+    transition: opacity .2s;
+  }
+  .transform-bar .tx-group {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+  .transform-bar label {
+    color: #666;
+    white-space: nowrap;
+    font-size: 10px;
+    min-width: 22px;
+  }
+  .transform-bar input[type=range] {
+    width: 56px;
+    accent-color: #6a6aff;
+    cursor: pointer;
+  }
+  .transform-bar .tx-val {
+    color: #aaaaff;
+    min-width: 32px;
+    text-align: right;
+    font-size: 10px;
+  }
+  .transform-bar .tx-reset {
+    background: none;
+    border: 1px solid #3a3a5a;
+    color: #888;
+    padding: 3px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 10px;
+    margin-left: auto;
+    transition: all .2s;
+  }
+  .transform-bar .tx-reset:hover { border-color: #6a6aff; color: #aaaaff; }
+
+  /* Tabs */
+  .tab-nav {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 0;
+  }
+  .tab-btn {
+    background: #151528;
+    border: 1px solid #2a2a44;
+    border-bottom: none;
+    color: #777;
+    padding: 10px 24px;
+    border-radius: 8px 8px 0 0;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all .2s;
+  }
+  .tab-btn.active {
+    background: #1e1e38;
+    color: #c8c8ff;
+    border-color: #4a4a7a;
+    border-bottom: 2px solid #6a6aff;
+    margin-bottom: -1px;
+  }
+  .tab-btn:hover:not(.active) { color: #aaa; background: #1a1a30; }
+
+  .tab-panel {
+    display: none;
+    background: #1e1e38;
+    border: 1px solid #2a2a44;
+    border-radius: 0 8px 8px 8px;
+    padding: 16px;
+    gap: 16px;
+    grid-template-columns: 260px 1fr;
+  }
+  .tab-panel.active { display: grid; }
+
+  .tab-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .control-group label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #999;
+    margin-bottom: 4px;
+  }
+  .control-group label .val { color: #aaaaff; }
+  .control-group input[type=range] {
+    width: 100%;
+    accent-color: #6a6aff;
+    cursor: pointer;
+  }
+
+  .tab-download {
+    width: 100%;
+    padding: 10px;
+    background: #2d2d50;
+    color: #c8c8ff;
+    border: 1px solid #4a4a7a;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all .2s;
+    margin-top: auto;
+  }
+  .tab-download:hover { background: #3d3d6a; }
+  .tab-download:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .tab-viewport {
+    background: #0d0d1a;
+    border-radius: 8px;
+    position: relative;
+    min-height: 400px;
+    overflow: hidden;
+  }
+  .tab-viewport canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .tab-viewport .overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.6);
+    color: #888;
+    font-size: 14px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .2s;
+  }
+  .tab-viewport .overlay.visible { opacity: 1; }
+
+  .no-model-hint {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #555;
+    font-size: 14px;
+    min-height: 200px;
+  }
+
+  .tab-stats {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    font-size: 12px;
+    color: #777;
+    flex-wrap: wrap;
+  }
+  .tab-stats .val { color: #aaaaff; font-weight: 600; }
+
+  @media (max-width: 900px) {
+    .upload-section { grid-template-columns: 1fr; }
+    .tab-panel { grid-template-columns: 1fr; }
+  }
+
+  /* Project Toolbar */
+  .project-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    background: #151528;
+    border: 1px solid #2a2a44;
+    border-radius: 10px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .project-toolbar .project-name {
+    flex: 1;
+    min-width: 160px;
+    background: #0d0d1a;
+    border: 1px solid #3a3a5c;
+    color: #c8c8d4;
+    padding: 7px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    outline: none;
+    transition: border-color .2s;
+  }
+  .project-toolbar .project-name:focus { border-color: #6a6aff; }
+  .project-toolbar .project-name::placeholder { color: #555; }
+  .toolbar-btn {
+    background: #2a2a50;
+    color: #c8c8ff;
+    border: 1px solid #4a4a70;
+    padding: 7px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all .2s;
+    white-space: nowrap;
+  }
+  .toolbar-btn:hover { background: #3a3a60; }
+  .toolbar-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .toolbar-btn.primary { background: #3a3a70; border-color: #5a5a90; }
+  .toolbar-btn.primary:hover { background: #4a4a80; }
+  #load-project-input { display: none; }
+  .toolbar-separator { width: 1px; height: 22px; background: #2a2a44; margin: 0 4px; }
+  .toolbar-status { font-size: 11px; color: #666; white-space: nowrap; }
+
+  /* Projects Panel */
+  .projects-panel {
+    background: #151528;
+    border: 1px solid #2a2a44;
+    border-radius: 10px;
+    margin-bottom: 12px;
+    overflow: hidden;
+  }
+  .projects-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    background: #1a1a30;
+    color: #888;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+    border-bottom: 1px solid #2a2a44;
+  }
+  .projects-header:hover { color: #aaa; }
+  .projects-count { color: #6a6aff; font-size: 11px; }
+  .projects-list {
+    display: flex;
+    gap: 10px;
+    padding: 10px 16px;
+    overflow-x: auto;
+    min-height: 52px;
+    align-items: center;
+  }
+  .projects-list:empty::after {
+    content: 'No saved projects yet. Upload a model and save it.';
+    color: #444;
+    font-size: 12px;
+    font-style: italic;
+  }
+  .project-card {
+    flex: 0 0 auto;
+    background: #1a1a35;
+    border: 1px solid #2a2a44;
+    border-radius: 8px;
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 180px;
+    max-width: 220px;
+    transition: border-color .2s;
+  }
+  .project-card:hover { border-color: #4a4a7a; }
+  .project-card .pc-name {
+    font-size: 13px;
+    color: #c8c8d4;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .project-card .pc-date {
+    font-size: 10px;
+    color: #555;
+  }
+  .project-card .pc-actions {
+    display: flex;
+    gap: 6px;
+  }
+  .pc-btn {
+    background: #2a2a50;
+    color: #999;
+    border: 1px solid #3a3a5a;
+    padding: 3px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 10px;
+    font-weight: 500;
+    transition: all .2s;
+    flex: 1;
+    text-align: center;
+  }
+  .pc-btn:hover { color: #c8c8ff; border-color: #5a5a8a; }
+  .pc-btn.danger:hover { color: #ff6a6a; border-color: #8a4a4a; }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Upload Section -->
+  <div class="upload-section">
+    <div class="dropzone" id="dropzone">
+      <div class="dropzone-icon">&#x1F4E6;</div>
+      <div class="dropzone-text">Drag & drop .STL or .OBJ file here</div>
+      <button class="file-btn" id="file-pick-btn">Choose File</button>
+      <input type="file" id="file-input" accept=".stl,.obj">
+    </div>
+    <div class="upload-preview" id="upload-viewport">
+      <canvas id="upload-canvas"></canvas>
+      <div class="stats-bar" id="upload-stats">
+        <span>Triangles: <span class="val" id="stat-tris">—</span></span>
+        <span>Size (mm): <span class="val" id="stat-size">—</span></span>
+        <span>File: <span class="val" id="stat-filename">No model loaded</span></span>
+      </div>
+      <div class="transform-bar" id="transform-bar" style="display:none">
+        <span style="color:#555;font-size:10px;margin-right:4px">Transform</span>
+        <div class="tx-group">
+          <label>Scale</label>
+          <input type="range" id="tx-scale" min="-100" max="100" value="1" step="0.5">
+          <span class="tx-val" id="tx-scale-val">1.00×</span>
+        </div>
+        <div class="tx-group">
+          <label>RX</label>
+          <input type="range" id="tx-rotx" min="0" max="360" value="0" step="1">
+          <span class="tx-val" id="tx-rotx-val">0°</span>
+        </div>
+        <div class="tx-group">
+          <label>RY</label>
+          <input type="range" id="tx-roty" min="0" max="360" value="0" step="1">
+          <span class="tx-val" id="tx-roty-val">0°</span>
+        </div>
+        <div class="tx-group">
+          <label>RZ</label>
+          <input type="range" id="tx-rotz" min="0" max="360" value="0" step="1">
+          <span class="tx-val" id="tx-rotz-val">0°</span>
+        </div>
+        <button class="tx-reset" id="tx-reset">Reset</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Project Toolbar -->
+  <div class="project-toolbar" id="project-toolbar">
+    <input type="text" class="project-name" id="project-name" placeholder="Untitled Project" spellcheck="false">
+    <span class="toolbar-separator"></span>
+    <button class="toolbar-btn" id="btn-new-project" title="New Project">New</button>
+    <button class="toolbar-btn primary" id="btn-save-project" title="Save Project" disabled>Save</button>
+    <button class="toolbar-btn" id="btn-load-project" title="Load Project">Load</button>
+    <input type="file" id="load-project-input" accept=".json">
+    <span class="toolbar-status" id="toolbar-status"></span>
+  </div>
+
+  <!-- Saved Projects Panel -->
+  <div class="projects-panel" id="projects-panel">
+    <div class="projects-header" id="projects-header">
+      <span>Saved Projects</span>
+      <span class="projects-count" id="projects-count">0</span>
+    </div>
+    <div class="projects-list" id="projects-list"></div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tab-nav">
+    <button class="tab-btn active" data-tab="ring">Ring</button>
+    <button class="tab-btn" data-tab="bracelet">Bracelet</button>
+    <button class="tab-btn" data-tab="sleeve">Lighter Sleeve</button>
+  </div>
+
+  <!-- Ring Panel -->
+  <div class="tab-panel active" id="panel-ring">
+    <div class="tab-controls">
+      <div class="control-group">
+        <label>Radius <span class="val" id="ring-radius-val">9.0 mm</span></label>
+        <input type="range" id="ring-radius" min="6" max="15" value="9" step="0.5">
+      </div>
+      <div class="control-group">
+        <label>Instances <span class="val" id="ring-count-val">12</span></label>
+        <input type="range" id="ring-count" min="6" max="36" value="12" step="1">
+      </div>
+      <button class="tab-download" id="ring-download" disabled>Download Ring STL</button>
+    </div>
+    <div class="tab-viewport" id="ring-viewport">
+      <canvas id="ring-canvas"></canvas>
+      <div class="overlay" id="ring-overlay">Processing...</div>
+    </div>
+    <div class="tab-stats">
+      <span>Total triangles: <span class="val" id="ring-tris">—</span></span>
+      <span>Ring diameter: <span class="val" id="ring-dia">—</span></span>
+    </div>
+  </div>
+
+  <!-- Bracelet Panel -->
+  <div class="tab-panel" id="panel-bracelet">
+    <div class="tab-controls">
+      <div class="control-group">
+        <label>Radius <span class="val" id="bracelet-radius-val">35.0 mm</span></label>
+        <input type="range" id="bracelet-radius" min="25" max="45" value="35" step="0.5">
+      </div>
+      <div class="control-group">
+        <label>Instances <span class="val" id="bracelet-count-val">12</span></label>
+        <input type="range" id="bracelet-count" min="6" max="36" value="12" step="1">
+      </div>
+      <button class="tab-download" id="bracelet-download" disabled>Download Bracelet STL</button>
+    </div>
+    <div class="tab-viewport" id="bracelet-viewport">
+      <canvas id="bracelet-canvas"></canvas>
+      <div class="overlay" id="bracelet-overlay">Processing...</div>
+    </div>
+    <div class="tab-stats">
+      <span>Total triangles: <span class="val" id="bracelet-tris">—</span></span>
+      <span>Bracelet diameter: <span class="val" id="bracelet-dia">—</span></span>
+    </div>
+  </div>
+
+  <!-- Sleeve Panel -->
+  <div class="tab-panel" id="panel-sleeve">
+    <div class="tab-controls" id="sleeve-controls">
+      <div class="control-group">
+        <label>Instances <span class="val" id="sleeve-count-val">36</span></label>
+        <input type="range" id="sleeve-count" min="12" max="72" value="36" step="1">
+      </div>
+      <div class="control-group">
+        <label>Rotations <span class="val" id="sleeve-rotations-val">3</span></label>
+        <input type="range" id="sleeve-rotations" min="1" max="6" value="3" step="1">
+      </div>
+      <div class="control-group">
+        <label>Object Scale <span class="val" id="sleeve-scale-val">1.0&times;</span></label>
+        <input type="range" id="sleeve-scale" min="0.2" max="2" value="1" step="0.05">
+      </div>
+      <button class="tab-download" id="sleeve-download" disabled>Download Sleeve STL</button>
+    </div>
+    <div class="tab-viewport" id="sleeve-viewport">
+      <canvas id="sleeve-canvas"></canvas>
+      <div class="overlay" id="sleeve-overlay">Processing...</div>
+    </div>
+    <div class="tab-stats">
+      <span>Shell triangles: <span class="val" id="sleeve-shell-tris">—</span></span>
+      <span>Pattern triangles: <span class="val" id="sleeve-pat-tris">—</span></span>
+      <span>Total: <span class="val" id="sleeve-total-tris">—</span></span>
+    </div>
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { STLLoader } from 'three/addons/loaders/STLLoader.js';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+import { STLExporter } from 'three/addons/exporters/STLExporter.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+
+// ===== GLOBAL STATE =====
+let rawUploadedGeometry = null;   // original geometry from file (untransformed)
+let uploadedGeometry = null;      // transformed geometry displayed & used for generation
+let uploadedMesh = null;          // Mesh in upload scene
+let bboxHelper = null;            // bounding box wireframe
+let gridHelper = null;            // reference grid in upload scene
+let transformState = { scale: 1, rotX: 0, rotY: 0, rotZ: 0 };
+const MAX_TRIS_WARN = 50000;
+
+// Per-tab state
+const tabs = {
+  ring:    { scene: null, camera: null, controls: null, renderer: null, mesh: null, geometry: null, canvasId: 'ring-canvas', viewportId: 'ring-viewport' },
+  bracelet:{ scene: null, camera: null, controls: null, renderer: null, mesh: null, geometry: null, canvasId: 'bracelet-canvas', viewportId: 'bracelet-viewport' },
+  sleeve:  { scene: null, camera: null, controls: null, renderer: null, mesh: null, geometry: null, canvasId: 'sleeve-canvas', viewportId: 'sleeve-viewport',
+             shellMesh: null, shellGeometry: null, patternMesh: null, patternGeometry: null },
+};
+let activeTab = 'ring';
+
+// Upload viewport
+let uploadScene, uploadCamera, uploadControls, uploadRenderer;
+let originalFilename = null;
+
+// ===== TRANSFORM PIPELINE =====
+function applyTransform() {
+  if (!rawUploadedGeometry) return null;
+  const { scale, rotX, rotY, rotZ } = transformState;
+  const geom = rawUploadedGeometry.clone();
+  // Center at origin so rotation pivots around the geometry's own center
+  geom.computeBoundingBox();
+  const cx = (geom.boundingBox.max.x + geom.boundingBox.min.x) / 2;
+  const cy = (geom.boundingBox.max.y + geom.boundingBox.min.y) / 2;
+  const cz = (geom.boundingBox.max.z + geom.boundingBox.min.z) / 2;
+  geom.translate(-cx, -cy, -cz);
+  if (scale !== 1) geom.scale(scale, scale, scale);
+  if (rotX !== 0) geom.rotateX(THREE.MathUtils.degToRad(rotX));
+  if (rotY !== 0) geom.rotateY(THREE.MathUtils.degToRad(rotY));
+  if (rotZ !== 0) geom.rotateZ(THREE.MathUtils.degToRad(rotZ));
+  geom.translate(cx, cy, cz);
+  geom.computeBoundingBox();
+  return geom;
+}
+
+function updateBBoxHelper() {
+  if (bboxHelper) {
+    if (bboxHelper.geometry) bboxHelper.geometry.dispose();
+    uploadScene.remove(bboxHelper);
+    bboxHelper = null;
+  }
+  if (!uploadedGeometry) return;
+  bboxHelper = new THREE.Box3Helper(uploadedGeometry.boundingBox, new THREE.Color(0x6a6aff));
+  uploadScene.add(bboxHelper);
+}
+
+function onTransformChanged() {
+  if (!rawUploadedGeometry) return;
+  if (uploadedGeometry) uploadedGeometry.dispose();
+  uploadedGeometry = applyTransform();
+
+  // Update the displayed mesh
+  if (uploadedMesh) {
+    uploadedMesh.geometry.dispose();
+    uploadedMesh.geometry = uploadedGeometry;
+  }
+
+  updateBBoxHelper();
+
+  // Fit camera to new bounding box
+  const d = Math.max(
+    uploadedGeometry.boundingBox.max.x - uploadedGeometry.boundingBox.min.x,
+    uploadedGeometry.boundingBox.max.y - uploadedGeometry.boundingBox.min.y,
+    uploadedGeometry.boundingBox.max.z - uploadedGeometry.boundingBox.min.z
+  ) * 2.5;
+  uploadCamera.position.set(d * 0.6, d * 0.5, d);
+  uploadCamera.lookAt(0, 0, 0);
+  uploadControls.target.set(0, 0, 0);
+  uploadControls.update();
+
+  document.getElementById('stat-tris').textContent = getTriangleCount(uploadedGeometry).toLocaleString();
+  document.getElementById('stat-size').textContent = getBBoxString(uploadedGeometry);
+
+  updateRing();
+  updateBracelet();
+  updateSleeve();
+}
+
+function showTransformBar() {
+  document.getElementById('transform-bar').style.display = 'flex';
+}
+function hideTransformBar() {
+  document.getElementById('transform-bar').style.display = 'none';
+}
+function resetTransformSliders() {
+  document.getElementById('tx-scale').value = 1;
+  document.getElementById('tx-scale-val').textContent = '1.00×';
+  document.getElementById('tx-rotx').value = 0;
+  document.getElementById('tx-rotx-val').textContent = '0°';
+  document.getElementById('tx-roty').value = 0;
+  document.getElementById('tx-roty-val').textContent = '0°';
+  document.getElementById('tx-rotz').value = 0;
+  document.getElementById('tx-rotz-val').textContent = '0°';
+  transformState = { scale: 1, rotX: 0, rotY: 0, rotZ: 0 };
+}
+
+const debouncedTransform = debounce(onTransformChanged, 100);
+
+// ===== BASE64 UTILITY (chunked to avoid spread-argument overflow) =====
+function bytesToBase64(bytes) {
+  const CHUNK = 4096;
+  const parts = [];
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    parts.push(String.fromCharCode(...bytes.slice(i, i + CHUNK)));
+  }
+  return btoa(parts.join(''));
+}
+
+// ===== SERVER API =====
+async function apiListProjects() {
+  const res = await fetch('/api/projects');
+  if (!res.ok) return [];
+  return res.json();
+}
+async function apiGetProject(id) {
+  const res = await fetch(`/api/projects/${id}`);
+  if (!res.ok) throw new Error('Project not found');
+  return res.json();
+}
+async function apiSaveProject(projectData) {
+  const res = await fetch('/api/projects', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(projectData),
+  });
+  if (!res.ok) throw new Error('Failed to save');
+  return res.json();
+}
+async function apiDeleteProject(id) {
+  const res = await fetch(`/api/projects/${id}`, { method: 'DELETE' });
+  if (!res.ok) throw new Error('Failed to delete');
+}
+
+// ===== PROJECT MANAGEMENT =====
+let currentProjectId = null;
+
+function getProjectState() {
+  return {
+    version: 1,
+    name: document.getElementById('project-name').value || 'Untitled Project',
+    savedAt: new Date().toISOString(),
+    originalFilename: originalFilename,
+    transform: {
+      scale: transformState.scale,
+      rotX: transformState.rotX,
+      rotY: transformState.rotY,
+      rotZ: transformState.rotZ,
+    },
+    parameters: {
+      ring: {
+        radius: parseFloat(document.getElementById('ring-radius').value),
+        count: parseInt(document.getElementById('ring-count').value),
+      },
+      bracelet: {
+        radius: parseFloat(document.getElementById('bracelet-radius').value),
+        count: parseInt(document.getElementById('bracelet-count').value),
+      },
+      sleeve: {
+        count: parseInt(document.getElementById('sleeve-count').value),
+        rotations: parseInt(document.getElementById('sleeve-rotations').value),
+        scale: parseFloat(document.getElementById('sleeve-scale').value),
+      },
+    },
+  };
+}
+
+async function saveProject() {
+  if (!rawUploadedGeometry) return;
+
+  const state = getProjectState();
+  if (currentProjectId) state.id = currentProjectId;
+
+  // Export raw (untransformed) geometry as binary STL, encode as base64
+  const mesh = new THREE.Mesh(rawUploadedGeometry);
+  const exporter = new STLExporter();
+  const stlBuffer = exporter.parse(mesh, { binary: true });
+  state.geometryStlBase64 = bytesToBase64(new Uint8Array(stlBuffer));
+
+  try {
+    const result = await apiSaveProject(state);
+    currentProjectId = result.id;
+    document.getElementById('toolbar-status').textContent =
+      `Saved to server ${new Date().toLocaleTimeString()}`;
+    await refreshProjectList();
+  } catch (err) {
+    console.error(err);
+    // Fallback: download as file
+    const json = JSON.stringify(state, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const name = (state.name || 'project').replace(/[^a-zA-Z0-9 _-]/g, '');
+    a.download = `${name || 'project'}.json`;
+    a.href = url;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    document.getElementById('toolbar-status').textContent =
+      `Downloaded (server unavailable)`;
+  }
+}
+
+async function refreshProjectList() {
+  const list = document.getElementById('projects-list');
+  const count = document.getElementById('projects-count');
+  try {
+    const projects = await apiListProjects();
+    count.textContent = projects.length;
+    list.innerHTML = projects.map(p => `
+      <div class="project-card">
+        <div class="pc-name" title="${p.name || 'Untitled'}">${p.name || 'Untitled'}</div>
+        <div class="pc-date">${p.savedAt ? new Date(p.savedAt).toLocaleString() : ''}</div>
+        <div class="pc-actions">
+          <button class="pc-btn" data-load="${p.id}">Load</button>
+          <button class="pc-btn danger" data-delete="${p.id}">Del</button>
+        </div>
+      </div>
+    `).join('');
+    // Wire up load buttons
+    list.querySelectorAll('[data-load]').forEach(btn => {
+      btn.addEventListener('click', () => loadProjectFromServer(btn.dataset.load));
+    });
+    // Wire up delete buttons
+    list.querySelectorAll('[data-delete]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (!confirm('Delete this project?')) return;
+        await apiDeleteProject(btn.dataset.delete);
+        if (currentProjectId === btn.dataset.delete) currentProjectId = null;
+        await refreshProjectList();
+      });
+    });
+  } catch {
+    list.innerHTML = '';
+    count.textContent = '0';
+  }
+}
+
+async function loadProjectFromServer(id) {
+  try {
+    const state = await apiGetProject(id);
+    currentProjectId = id;
+
+    // Decode base64 STL
+    const binary = atob(state.geometryStlBase64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+
+    const loader = new STLLoader();
+    const geometry = loader.parse(bytes.buffer);
+
+    if (!geometry || getTriangleCount(geometry) === 0) {
+      throw new Error('Loaded geometry has no triangles');
+    }
+
+    // Dispose old
+    if (uploadedGeometry) uploadedGeometry.dispose();
+    if (rawUploadedGeometry) rawUploadedGeometry.dispose();
+    rawUploadedGeometry = geometry;
+    originalFilename = state.originalFilename || null;
+
+    // Restore transform state
+    if (state.transform) {
+      transformState = {
+        scale: state.transform.scale ?? 1,
+        rotX: state.transform.rotX ?? 0,
+        rotY: state.transform.rotY ?? 0,
+        rotZ: state.transform.rotZ ?? 0,
+      };
+      document.getElementById('tx-scale').value = transformState.scale;
+      document.getElementById('tx-scale-val').textContent = `${transformState.scale.toFixed(2)}×`;
+      document.getElementById('tx-rotx').value = transformState.rotX;
+      document.getElementById('tx-rotx-val').textContent = `${transformState.rotX}°`;
+      document.getElementById('tx-roty').value = transformState.rotY;
+      document.getElementById('tx-roty-val').textContent = `${transformState.rotY}°`;
+      document.getElementById('tx-rotz').value = transformState.rotZ;
+      document.getElementById('tx-rotz-val').textContent = `${transformState.rotZ}°`;
+    } else {
+      resetTransformSliders();
+    }
+
+    uploadedGeometry = applyTransform();
+
+    if (uploadedMesh) { uploadedMesh.geometry.dispose(); uploadScene.remove(uploadedMesh); }
+    const mat = new THREE.MeshStandardMaterial({ color: 0x5599cc, roughness: 0.35, metalness: 0.15, flatShading: false });
+    uploadedMesh = new THREE.Mesh(uploadedGeometry, mat);
+    uploadScene.add(uploadedMesh);
+
+    updateBBoxHelper();
+    showTransformBar();
+
+    const sz = new THREE.Vector3();
+    uploadedGeometry.boundingBox.getSize(sz);
+    const d = Math.max(sz.x, sz.y, sz.z) * 2.5;
+    uploadCamera.position.set(d * 0.6, d * 0.5, d);
+    uploadCamera.lookAt(0, 0, 0);
+    uploadControls.target.set(0, 0, 0);
+    uploadControls.update();
+
+    document.getElementById('stat-tris').textContent = getTriangleCount(uploadedGeometry).toLocaleString();
+    document.getElementById('stat-size').textContent = getBBoxString(uploadedGeometry);
+    document.getElementById('stat-filename').textContent = originalFilename || 'Loaded from server';
+
+    if (state.parameters) {
+      const p = state.parameters;
+      if (p.ring) {
+        document.getElementById('ring-radius').value = p.ring.radius;
+        document.getElementById('ring-radius-val').textContent = `${p.ring.radius.toFixed(1)} mm`;
+        document.getElementById('ring-count').value = p.ring.count;
+        document.getElementById('ring-count-val').textContent = p.ring.count;
+      }
+      if (p.bracelet) {
+        document.getElementById('bracelet-radius').value = p.bracelet.radius;
+        document.getElementById('bracelet-radius-val').textContent = `${p.bracelet.radius.toFixed(1)} mm`;
+        document.getElementById('bracelet-count').value = p.bracelet.count;
+        document.getElementById('bracelet-count-val').textContent = p.bracelet.count;
+      }
+      if (p.sleeve) {
+        document.getElementById('sleeve-count').value = p.sleeve.count;
+        document.getElementById('sleeve-count-val').textContent = p.sleeve.count;
+        document.getElementById('sleeve-rotations').value = p.sleeve.rotations;
+        document.getElementById('sleeve-rotations-val').textContent = p.sleeve.rotations;
+        document.getElementById('sleeve-scale').value = p.sleeve.scale;
+        document.getElementById('sleeve-scale-val').textContent = `${p.sleeve.scale.toFixed(2)}×`;
+      }
+    }
+
+    if (state.name) {
+      document.getElementById('project-name').value = state.name;
+    }
+
+    document.getElementById('btn-save-project').disabled = false;
+
+    updateRing();
+    updateBracelet();
+    updateSleeve();
+
+    document.getElementById('toolbar-status').textContent = `Loaded from server`;
+  } catch (err) {
+    console.error(err);
+    alert(`Failed to load project: ${err.message}`);
+  }
+}
+
+async function loadProject(file) {
+  try {
+    const text = await file.text();
+    const state = JSON.parse(text);
+    currentProjectId = null; // file load, not server-tracked
+
+    if (!state.version || !state.geometryStlBase64) {
+      throw new Error('Invalid project file: missing version or geometry data');
+    }
+
+    // Decode base64 STL back to binary
+    const binary = atob(state.geometryStlBase64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+
+    const loader = new STLLoader();
+    const geometry = loader.parse(bytes.buffer);
+
+    if (!geometry || getTriangleCount(geometry) === 0) {
+      throw new Error('Loaded geometry has no triangles');
+    }
+
+    // Dispose old geometries
+    if (uploadedGeometry) uploadedGeometry.dispose();
+    if (rawUploadedGeometry) rawUploadedGeometry.dispose();
+    rawUploadedGeometry = geometry;
+    originalFilename = state.originalFilename || null;
+
+    // Restore transform state
+    if (state.transform) {
+      transformState = {
+        scale: state.transform.scale ?? 1,
+        rotX: state.transform.rotX ?? 0,
+        rotY: state.transform.rotY ?? 0,
+        rotZ: state.transform.rotZ ?? 0,
+      };
+      document.getElementById('tx-scale').value = transformState.scale;
+      document.getElementById('tx-scale-val').textContent = `${transformState.scale.toFixed(2)}×`;
+      document.getElementById('tx-rotx').value = transformState.rotX;
+      document.getElementById('tx-rotx-val').textContent = `${transformState.rotX}°`;
+      document.getElementById('tx-roty').value = transformState.rotY;
+      document.getElementById('tx-roty-val').textContent = `${transformState.rotY}°`;
+      document.getElementById('tx-rotz').value = transformState.rotZ;
+      document.getElementById('tx-rotz-val').textContent = `${transformState.rotZ}°`;
+    } else {
+      resetTransformSliders();
+    }
+
+    // Apply transform to get display geometry
+    uploadedGeometry = applyTransform();
+
+    // Update upload scene
+    if (uploadedMesh) { uploadedMesh.geometry.dispose(); uploadScene.remove(uploadedMesh); }
+    const mat = new THREE.MeshStandardMaterial({ color: 0x5599cc, roughness: 0.35, metalness: 0.15, flatShading: false });
+    uploadedMesh = new THREE.Mesh(uploadedGeometry, mat);
+    uploadScene.add(uploadedMesh);
+
+    updateBBoxHelper();
+    showTransformBar();
+
+    // Fit camera
+    const sz = new THREE.Vector3();
+    uploadedGeometry.boundingBox.getSize(sz);
+    const d = Math.max(sz.x, sz.y, sz.z) * 2.5;
+    uploadCamera.position.set(d * 0.6, d * 0.5, d);
+    uploadCamera.lookAt(0, 0, 0);
+    uploadControls.target.set(0, 0, 0);
+    uploadControls.update();
+
+    // Stats
+    document.getElementById('stat-tris').textContent = getTriangleCount(uploadedGeometry).toLocaleString();
+    document.getElementById('stat-size').textContent = getBBoxString(uploadedGeometry);
+    document.getElementById('stat-filename').textContent = originalFilename || 'Loaded from project';
+
+    // Restore parameters and UI
+    if (state.parameters) {
+      const p = state.parameters;
+      if (p.ring) {
+        document.getElementById('ring-radius').value = p.ring.radius;
+        document.getElementById('ring-radius-val').textContent = `${p.ring.radius.toFixed(1)} mm`;
+        document.getElementById('ring-count').value = p.ring.count;
+        document.getElementById('ring-count-val').textContent = p.ring.count;
+      }
+      if (p.bracelet) {
+        document.getElementById('bracelet-radius').value = p.bracelet.radius;
+        document.getElementById('bracelet-radius-val').textContent = `${p.bracelet.radius.toFixed(1)} mm`;
+        document.getElementById('bracelet-count').value = p.bracelet.count;
+        document.getElementById('bracelet-count-val').textContent = p.bracelet.count;
+      }
+      if (p.sleeve) {
+        document.getElementById('sleeve-count').value = p.sleeve.count;
+        document.getElementById('sleeve-count-val').textContent = p.sleeve.count;
+        document.getElementById('sleeve-rotations').value = p.sleeve.rotations;
+        document.getElementById('sleeve-rotations-val').textContent = p.sleeve.rotations;
+        document.getElementById('sleeve-scale').value = p.sleeve.scale;
+        document.getElementById('sleeve-scale-val').textContent = `${p.sleeve.scale.toFixed(2)}×`;
+      }
+    }
+
+    // Restore project name
+    if (state.name) {
+      document.getElementById('project-name').value = state.name;
+    }
+
+    // Enable save button
+    document.getElementById('btn-save-project').disabled = false;
+
+    // Regenerate all tabs
+    updateRing();
+    updateBracelet();
+    updateSleeve();
+
+    document.getElementById('toolbar-status').textContent =
+      `Loaded ${file.name}`;
+  } catch (err) {
+    console.error(err);
+    alert(`Failed to load project: ${err.message}`);
+  }
+}
+
+function newProject() {
+  if (uploadedGeometry) uploadedGeometry.dispose();
+  if (rawUploadedGeometry) rawUploadedGeometry.dispose();
+  uploadedGeometry = null;
+  rawUploadedGeometry = null;
+  originalFilename = null;
+  currentProjectId = null;
+  if (uploadedMesh) { uploadedMesh.geometry.dispose(); uploadScene.remove(uploadedMesh); }
+  uploadedMesh = null;
+  if (bboxHelper) { if (bboxHelper.geometry) bboxHelper.geometry.dispose(); uploadScene.remove(bboxHelper); bboxHelper = null; }
+
+  hideTransformBar();
+  resetTransformSliders();
+
+  // Reset stats
+  document.getElementById('stat-tris').textContent = '—';
+  document.getElementById('stat-size').textContent = '—';
+  document.getElementById('stat-filename').textContent = 'No model loaded';
+  document.getElementById('project-name').value = '';
+
+  // Reset sliders to defaults
+  document.getElementById('ring-radius').value = 9;
+  document.getElementById('ring-radius-val').textContent = '9.0 mm';
+  document.getElementById('ring-count').value = 12;
+  document.getElementById('ring-count-val').textContent = '12';
+  document.getElementById('bracelet-radius').value = 35;
+  document.getElementById('bracelet-radius-val').textContent = '35.0 mm';
+  document.getElementById('bracelet-count').value = 12;
+  document.getElementById('bracelet-count-val').textContent = '12';
+  document.getElementById('sleeve-count').value = 36;
+  document.getElementById('sleeve-count-val').textContent = '36';
+  document.getElementById('sleeve-rotations').value = 3;
+  document.getElementById('sleeve-rotations-val').textContent = '3';
+  document.getElementById('sleeve-scale').value = 1;
+  document.getElementById('sleeve-scale-val').textContent = '1.00×';
+
+  // Clear tab scenes
+  for (const [name, state] of Object.entries(tabs)) {
+    if (state.mesh) { state.mesh.geometry.dispose(); state.scene.remove(state.mesh); state.mesh = null; }
+    if (state.geometry) { state.geometry.dispose(); state.geometry = null; }
+    if (state.shellMesh) { state.shellMesh.geometry.dispose(); state.scene.remove(state.shellMesh); state.shellMesh = null; }
+    if (state.shellGeometry) { state.shellGeometry.dispose(); state.shellGeometry = null; }
+    if (state.patternMesh) { state.patternMesh.geometry.dispose(); state.scene.remove(state.patternMesh); state.patternMesh = null; }
+    if (state.patternGeometry) { state.patternGeometry.dispose(); state.patternGeometry = null; }
+  }
+
+  // Reset tab stats
+  document.getElementById('ring-tris').textContent = '—';
+  document.getElementById('ring-dia').textContent = '—';
+  document.getElementById('ring-download').disabled = true;
+  document.getElementById('bracelet-tris').textContent = '—';
+  document.getElementById('bracelet-dia').textContent = '—';
+  document.getElementById('bracelet-download').disabled = true;
+  document.getElementById('sleeve-shell-tris').textContent = '—';
+  document.getElementById('sleeve-pat-tris').textContent = '—';
+  document.getElementById('sleeve-total-tris').textContent = '—';
+  document.getElementById('sleeve-download').disabled = true;
+
+  document.getElementById('btn-save-project').disabled = true;
+  document.getElementById('toolbar-status').textContent = 'New project';
+}
+
+// ===== UTILITY: VIEWPORT SETUP =====
+function createViewport(canvas, bgColor = 0x111122) {
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(bgColor);
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  const camera = new THREE.PerspectiveCamera(45, 2, 0.1, 1000);
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.12;
+  scene.add(new THREE.AmbientLight(0x404068, 2));
+  const key = new THREE.DirectionalLight(0xffffff, 2.5);
+  key.position.set(1, 1.2, 1);
+  scene.add(key);
+  const fill = new THREE.DirectionalLight(0x8888cc, 1.2);
+  fill.position.set(-0.8, 0.3, -0.6);
+  scene.add(fill);
+  const rim = new THREE.DirectionalLight(0x6666aa, 0.8);
+  rim.position.set(0, -0.4, 0.8);
+  scene.add(rim);
+  return { scene, renderer, camera, controls };
+}
+
+function resizeViewport(renderer, camera, container) {
+  const w = container.clientWidth;
+  const h = container.clientHeight;
+  if (w === 0 || h === 0) return;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+
+// ===== DEBOUNCE =====
+function debounce(fn, ms) {
+  let timer;
+  return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), ms); };
+}
+
+// ===== GEOMETRY UTILITIES =====
+function normalizeGeometry(geom) {
+  const g = geom.clone();
+  g.computeBoundingBox();
+  const bb = g.boundingBox;
+  const cx = (bb.max.x + bb.min.x) / 2;
+  const cz = (bb.max.z + bb.min.z) / 2;
+  g.translate(-cx, -bb.min.y, -cz);
+  return g;
+}
+
+function getTriangleCount(geom) {
+  if (!geom) return 0;
+  const idx = geom.index;
+  const pos = geom.getAttribute('position');
+  if (!pos) return 0;
+  if (idx) return idx.count / 3;
+  return pos.count / 3;
+}
+
+function getBBoxString(geom) {
+  if (!geom) return '—';
+  geom.computeBoundingBox();
+  const bb = geom.boundingBox;
+  const sx = (bb.max.x - bb.min.x).toFixed(1);
+  const sy = (bb.max.y - bb.min.y).toFixed(1);
+  const sz = (bb.max.z - bb.min.z).toFixed(1);
+  return `${sx} × ${sy} × ${sz}`;
+}
+
+// ===== CIRCULAR ARRAY (Ring & Bracelet) =====
+function generateCircularArray(sourceGeom, radius, count) {
+  const geometries = [];
+  for (let i = 0; i < count; i++) {
+    const angle = (i / count) * Math.PI * 2;
+    const inst = sourceGeom.clone();
+    // translate outward along X, then rotate around Y — places each instance on the circle
+    inst.translate(radius, 0, 0);
+    inst.rotateY(angle);
+    geometries.push(inst);
+  }
+  const merged = mergeGeometries(geometries);
+  merged.computeVertexNormals();
+  return merged;
+}
+
+// ===== ELLIPTICAL SLEEVE SHELL =====
+function createEllipticalSleeveShell() {
+  const H = 70.5;
+  const outerRx = 12.95, outerRz = 7.2;
+  const innerRx = 11.75, innerRz = 6.0;
+  const segs = 72;
+
+  // Outer wall
+  const outerWall = new THREE.CylinderGeometry(1, 1, H, segs, 1, true);
+  outerWall.scale(outerRx, 1, outerRz);
+  outerWall.computeVertexNormals();
+
+  // Inner wall — normals flipped to point inward (toward cavity)
+  const innerWall = new THREE.CylinderGeometry(1, 1, H, segs, 1, true);
+  innerWall.scale(innerRx, 1, innerRz);
+  innerWall.computeVertexNormals();
+  const innerN = innerWall.getAttribute('normal');
+  for (let i = 0; i < innerN.count; i++) {
+    innerN.setXYZ(i, -innerN.getX(i), -innerN.getY(i), -innerN.getZ(i));
+  }
+
+  // Bottom ring cap — connects outer to inner at y = -H/2
+  const ringVerts = [];
+  const ringIdx = [];
+  for (let i = 0; i <= segs; i++) {
+    const a = (i / segs) * Math.PI * 2;
+    const cos = Math.cos(a), sin = Math.sin(a);
+    ringVerts.push(outerRx * cos, -H / 2, outerRz * sin); // outer
+    ringVerts.push(innerRx * cos, -H / 2, innerRz * sin); // inner
+  }
+  for (let i = 0; i < segs; i++) {
+    const o1 = i * 2, i1 = i * 2 + 1;
+    const o2 = (i + 1) * 2, i2 = (i + 1) * 2 + 1;
+    ringIdx.push(o1, o2, i1, i1, o2, i2);
+  }
+  const bottomCap = new THREE.BufferGeometry();
+  bottomCap.setAttribute('position', new THREE.Float32BufferAttribute(ringVerts, 3));
+  bottomCap.setIndex(ringIdx);
+  bottomCap.computeVertexNormals();
+
+  const shell = mergeGeometries([outerWall, innerWall, bottomCap]);
+  shell.computeVertexNormals();
+  return shell;
+}
+
+// ===== HELIX PLACEMENT ON ELLIPTICAL SLEEVE =====
+function placeOnSleeveHelix(baseGeom, shellGeom, instanceCount, numRotations) {
+  const H = 70.5;
+  const a = 12.95, b = 7.2;
+  const totalAngle = Math.PI * 2 * numRotations;
+  const geometries = [];
+
+  for (let i = 0; i < instanceCount; i++) {
+    const t = (i / instanceCount) * totalAngle;
+    const cosT = Math.cos(t), sinT = Math.sin(t);
+
+    // Position on elliptical helix
+    const px = a * cosT;
+    const py = -H / 2 + (i / (instanceCount - 1)) * H;
+    const pz = b * sinT;
+
+    // Surface normal (outward): gradient of x²/a² + z²/b² = 1
+    const nx = cosT / a;
+    const nz = sinT / b;
+    const nl = Math.sqrt(nx * nx + nz * nz);
+    const N = new THREE.Vector3(nx / nl, 0, nz / nl);
+
+    // Helix tangent
+    const dydt = instanceCount > 1 ? H / totalAngle : 0;
+    const T = new THREE.Vector3(-a * sinT, dydt, b * cosT).normalize();
+
+    const R = new THREE.Vector3().crossVectors(N, T).normalize();
+    T.crossVectors(R, N).normalize(); // re-orthogonalize
+
+    const m = new THREE.Matrix4();
+    m.makeBasis(R, N, T);
+    m.setPosition(px, py, pz);
+
+    const inst = baseGeom.clone();
+    inst.applyMatrix4(m);
+    geometries.push(inst);
+  }
+
+  const merged = mergeGeometries(geometries);
+  merged.computeVertexNormals();
+  return merged;
+}
+
+// ===== STL EXPORT =====
+function downloadSTL(geometry, filename) {
+  const mesh = new THREE.Mesh(geometry);
+  const exporter = new STLExporter();
+  const data = exporter.parse(mesh, { binary: true });
+  const blob = new Blob([data], { type: 'application/octet-stream' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ===== RING GENERATOR =====
+function updateRing() {
+  const state = tabs.ring;
+  if (!uploadedGeometry || !state.renderer) return;
+
+  const radius = parseFloat(document.getElementById('ring-radius').value);
+  const count = parseInt(document.getElementById('ring-count').value);
+
+  document.getElementById('ring-overlay').classList.add('visible');
+  setTimeout(() => {
+    const normalized = normalizeGeometry(uploadedGeometry);
+    if (state.geometry) state.geometry.dispose();
+    state.geometry = generateCircularArray(normalized, radius, count);
+
+    if (state.mesh) { state.mesh.geometry.dispose(); state.scene.remove(state.mesh); }
+    const mat = new THREE.MeshStandardMaterial({ color: 0xd4a853, roughness: 0.3, metalness: 0.2, flatShading: false });
+    state.mesh = new THREE.Mesh(state.geometry, mat);
+    state.scene.add(state.mesh);
+
+    // Fit camera
+    const d = radius * 2.5;
+    state.camera.position.set(d * 0.5, d * 0.7, d);
+    state.camera.lookAt(0, 0, 0);
+    state.controls.target.set(0, 0, 0);
+    state.controls.update();
+
+    document.getElementById('ring-tris').textContent = getTriangleCount(state.geometry).toLocaleString();
+    document.getElementById('ring-dia').textContent = `${(radius * 2).toFixed(1)} mm`;
+    document.getElementById('ring-download').disabled = false;
+    document.getElementById('ring-overlay').classList.remove('visible');
+  }, 30);
+}
+
+// ===== BRACELET GENERATOR =====
+function updateBracelet() {
+  const state = tabs.bracelet;
+  if (!uploadedGeometry || !state.renderer) return;
+
+  const radius = parseFloat(document.getElementById('bracelet-radius').value);
+  const count = parseInt(document.getElementById('bracelet-count').value);
+
+  document.getElementById('bracelet-overlay').classList.add('visible');
+  setTimeout(() => {
+    const normalized = normalizeGeometry(uploadedGeometry);
+    if (state.geometry) state.geometry.dispose();
+    state.geometry = generateCircularArray(normalized, radius, count);
+
+    if (state.mesh) { state.mesh.geometry.dispose(); state.scene.remove(state.mesh); }
+    const mat = new THREE.MeshStandardMaterial({ color: 0xc0a050, roughness: 0.3, metalness: 0.25, flatShading: false });
+    state.mesh = new THREE.Mesh(state.geometry, mat);
+    state.scene.add(state.mesh);
+
+    const d = radius * 1.6;
+    state.camera.position.set(d * 0.5, d * 0.8, d);
+    state.camera.lookAt(0, 0, 0);
+    state.controls.target.set(0, 0, 0);
+    state.controls.update();
+
+    document.getElementById('bracelet-tris').textContent = getTriangleCount(state.geometry).toLocaleString();
+    document.getElementById('bracelet-dia').textContent = `${(radius * 2).toFixed(1)} mm`;
+    document.getElementById('bracelet-download').disabled = false;
+    document.getElementById('bracelet-overlay').classList.remove('visible');
+  }, 30);
+}
+
+// ===== SLEEVE GENERATOR =====
+function updateSleeve() {
+  const state = tabs.sleeve;
+  if (!uploadedGeometry || !state.renderer) return;
+
+  const count = parseInt(document.getElementById('sleeve-count').value);
+  const rotations = parseInt(document.getElementById('sleeve-rotations').value);
+  const userScale = parseFloat(document.getElementById('sleeve-scale').value);
+
+  document.getElementById('sleeve-overlay').classList.add('visible');
+  setTimeout(() => {
+    // Create shell (reuse if same shape, but always rebuild for simplicity)
+    if (state.shellGeometry) state.shellGeometry.dispose();
+    state.shellGeometry = createEllipticalSleeveShell();
+
+    // Auto-scale uploaded geometry to fit sleeve surface (target ~5mm)
+    uploadedGeometry.computeBoundingBox();
+    const sz = new THREE.Vector3();
+    uploadedGeometry.boundingBox.getSize(sz);
+    const maxDim = Math.max(sz.x, sz.y, sz.z);
+    const autoScale = maxDim > 0 ? Math.min(1, 5 / maxDim) : 1;
+    const finalScale = autoScale * userScale;
+
+    const baseGeom = uploadedGeometry.clone();
+    if (finalScale !== 1) baseGeom.scale(finalScale, finalScale, finalScale);
+    baseGeom.computeBoundingBox();
+    const bc = new THREE.Vector3();
+    baseGeom.boundingBox.getCenter(bc);
+    baseGeom.translate(-bc.x, -bc.y, -bc.z);
+
+    const patternGeom = placeOnSleeveHelix(baseGeom, state.shellGeometry, count, rotations);
+    baseGeom.dispose();
+
+    // Store pattern geometry for preview
+    if (state.patternGeometry) state.patternGeometry.dispose();
+    state.patternGeometry = patternGeom;
+
+    // Build merged geometry for STL export
+    if (state.geometry) state.geometry.dispose();
+    state.geometry = mergeGeometries([state.shellGeometry.clone(), state.patternGeometry.clone()]);
+    state.geometry.computeVertexNormals();
+
+    // Preview: shell in gray, pattern in gold — separate meshes avoid z-fighting
+    if (state.shellMesh) { state.shellMesh.geometry.dispose(); state.scene.remove(state.shellMesh); }
+    if (state.patternMesh) { state.patternMesh.geometry.dispose(); state.scene.remove(state.patternMesh); }
+
+    const shellMat = new THREE.MeshStandardMaterial({ color: 0x889999, roughness: 0.35, metalness: 0.3, flatShading: false });
+    state.shellMesh = new THREE.Mesh(state.shellGeometry, shellMat);
+    state.scene.add(state.shellMesh);
+
+    const patMat = new THREE.MeshStandardMaterial({ color: 0xd4a853, roughness: 0.3, metalness: 0.25, flatShading: false });
+    state.patternMesh = new THREE.Mesh(state.patternGeometry, patMat);
+    state.scene.add(state.patternMesh);
+
+    state.camera.position.set(0, 0, 100);
+    state.camera.lookAt(0, 0, 0);
+    state.controls.target.set(0, 0, 0);
+    state.controls.update();
+
+    document.getElementById('sleeve-shell-tris').textContent = getTriangleCount(state.shellGeometry).toLocaleString();
+    document.getElementById('sleeve-pat-tris').textContent = getTriangleCount(state.patternGeometry).toLocaleString();
+    document.getElementById('sleeve-total-tris').textContent = getTriangleCount(state.geometry).toLocaleString();
+    document.getElementById('sleeve-download').disabled = false;
+    document.getElementById('sleeve-overlay').classList.remove('visible');
+  }, 30);
+}
+
+// Deounced updaters
+const debouncedUpdateRing = debounce(updateRing, 120);
+const debouncedUpdateBracelet = debounce(updateBracelet, 120);
+const debouncedUpdateSleeve = debounce(updateSleeve, 120);
+
+// ===== UPLOAD HANDLING =====
+async function handleFile(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (!['stl', 'obj'].includes(ext)) {
+    alert('Please upload a .stl or .obj file.');
+    return;
+  }
+
+  document.getElementById('stat-filename').textContent = file.name;
+  originalFilename = file.name;
+
+  try {
+    let geometry;
+    if (ext === 'stl') {
+      const buffer = await file.arrayBuffer();
+      const loader = new STLLoader();
+      geometry = loader.parse(buffer);
+    } else {
+      const text = await file.text();
+      const loader = new OBJLoader();
+      const group = loader.parse(text);
+      const geoms = [];
+      group.traverse(child => {
+        if (child.isMesh && child.geometry) {
+          const g = child.geometry.clone();
+          g.applyMatrix4(child.matrixWorld);
+          geoms.push(g);
+        }
+      });
+      if (geoms.length === 0) throw new Error('No geometry found in OBJ file');
+      geometry = geoms.length === 1 ? geoms[0] : mergeGeometries(geoms);
+      geometry.computeVertexNormals();
+    }
+
+    if (!geometry || getTriangleCount(geometry) === 0) {
+      alert('The uploaded file contains no triangles.');
+      return;
+    }
+
+    if (getTriangleCount(geometry) > MAX_TRIS_WARN) {
+      console.warn(`Large mesh: ${getTriangleCount(geometry)} triangles. Performance may degrade.`);
+    }
+
+    // Dispose old
+    if (uploadedGeometry) uploadedGeometry.dispose();
+    if (rawUploadedGeometry) rawUploadedGeometry.dispose();
+    rawUploadedGeometry = geometry;
+    resetTransformSliders();
+
+    // Apply current transform (identity on fresh upload)
+    uploadedGeometry = applyTransform();
+
+    document.getElementById('btn-save-project').disabled = false;
+    showTransformBar();
+
+    // Update upload scene
+    if (uploadedMesh) { uploadedMesh.geometry.dispose(); uploadScene.remove(uploadedMesh); }
+    const mat = new THREE.MeshStandardMaterial({ color: 0x5599cc, roughness: 0.35, metalness: 0.15, flatShading: false });
+    uploadedMesh = new THREE.Mesh(uploadedGeometry, mat);
+    uploadScene.add(uploadedMesh);
+
+    updateBBoxHelper();
+
+    // Fit camera
+    const sz = new THREE.Vector3();
+    uploadedGeometry.boundingBox.getSize(sz);
+    const d = Math.max(sz.x, sz.y, sz.z) * 2.5;
+    uploadCamera.position.set(d * 0.6, d * 0.5, d);
+    uploadCamera.lookAt(0, 0, 0);
+    uploadControls.target.set(0, 0, 0);
+    uploadControls.update();
+
+    // Stats
+    document.getElementById('stat-tris').textContent = getTriangleCount(uploadedGeometry).toLocaleString();
+    document.getElementById('stat-size').textContent = getBBoxString(uploadedGeometry);
+
+    // Regenerate all tabs
+    updateRing();
+    updateBracelet();
+    updateSleeve();
+  } catch (err) {
+    console.error(err);
+    alert(`Failed to load file: ${err.message}`);
+    document.getElementById('stat-filename').textContent = 'Error loading file';
+  }
+}
+
+// ===== TAB SWITCHING =====
+function switchTab(tabName) {
+  activeTab = tabName;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tabName));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === `panel-${tabName}`));
+
+  // Ensure the active tab's renderer is initialized
+  const state = tabs[tabName];
+  if (!state.renderer) {
+    const canvas = document.getElementById(state.canvasId);
+    const vp = createViewport(canvas, 0x111122);
+    state.scene = vp.scene;
+    state.camera = vp.camera;
+    state.controls = vp.controls;
+    state.renderer = vp.renderer;
+
+    // Trigger generation if model is loaded
+    if (uploadedGeometry) {
+      if (tabName === 'ring') updateRing();
+      else if (tabName === 'bracelet') updateBracelet();
+      else if (tabName === 'sleeve') updateSleeve();
+    }
+  }
+
+  // Observe the newly visible viewport for resize
+  const viewport = document.getElementById(state.viewportId);
+  observeViewport(viewport, state.renderer, state.camera);
+}
+
+// ===== SLIDER UI =====
+function bindSlider(id, valId, formatter, onChange) {
+  const slider = document.getElementById(id);
+  const valEl = document.getElementById(valId);
+  slider.addEventListener('input', () => {
+    valEl.textContent = formatter(slider.value);
+    onChange();
+  });
+}
+
+// ===== RESIZE =====
+const viewportObservers = [];
+
+function observeViewport(container, renderer, camera) {
+  const observer = new ResizeObserver(() => {
+    resizeViewport(renderer, camera, container);
+  });
+  observer.observe(container);
+  viewportObservers.push(observer);
+  // Initial size
+  resizeViewport(renderer, camera, container);
+}
+
+// ===== RENDER LOOP =====
+function animate() {
+  requestAnimationFrame(animate);
+
+  if (uploadControls) { uploadControls.update(); }
+  if (uploadRenderer && uploadScene && uploadCamera) {
+    uploadRenderer.render(uploadScene, uploadCamera);
+  }
+
+  for (const [name, state] of Object.entries(tabs)) {
+    if (!state.renderer || !state.scene || !state.camera) continue;
+    if (name !== activeTab) continue;
+    if (state.controls) state.controls.update();
+    state.renderer.render(state.scene, state.camera);
+  }
+}
+
+// ===== INIT =====
+function init() {
+  // Upload viewport
+  const uploadCanvas = document.getElementById('upload-canvas');
+  const uploadVpEl = document.getElementById('upload-viewport');
+  const vp = createViewport(uploadCanvas, 0x0d0d1a);
+  uploadScene = vp.scene;
+  uploadCamera = vp.camera;
+  uploadControls = vp.controls;
+  uploadRenderer = vp.renderer;
+  observeViewport(uploadVpEl, uploadRenderer, uploadCamera);
+  uploadCamera.position.set(20, 15, 20);
+  uploadCamera.lookAt(0, 0, 0);
+  uploadControls.target.set(0, 0, 0);
+
+  // Reference grid — 100×100 mm at y=0, 5 mm cells
+  gridHelper = new THREE.GridHelper(100, 20, 0x444466, 0x222244);
+  gridHelper.material.opacity = 0.5;
+  gridHelper.material.transparent = true;
+  uploadScene.add(gridHelper);
+
+  // File upload handlers
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('file-input');
+  document.getElementById('file-pick-btn').addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files[0]) handleFile(fileInput.files[0]);
+  });
+  dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
+  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
+  dropzone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropzone.classList.remove('drag-over');
+    if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+  });
+
+  // Tab buttons
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+  });
+
+  // Initialize active tab (ring) renderer eagerly
+  const ringCanvas = document.getElementById('ring-canvas');
+  const rvp = createViewport(ringCanvas, 0x111122);
+  tabs.ring.scene = rvp.scene;
+  tabs.ring.camera = rvp.camera;
+  tabs.ring.controls = rvp.controls;
+  tabs.ring.renderer = rvp.renderer;
+  rvp.camera.position.set(25, 18, 30);
+  rvp.camera.lookAt(0, 0, 0);
+  rvp.controls.target.set(0, 0, 0);
+  const ringVpEl = document.getElementById('ring-viewport');
+  observeViewport(ringVpEl, rvp.renderer, rvp.camera);
+
+  // Ring sliders
+  bindSlider('ring-radius', 'ring-radius-val', v => `${parseFloat(v).toFixed(1)} mm`, debouncedUpdateRing);
+  bindSlider('ring-count', 'ring-count-val', v => v, debouncedUpdateRing);
+  document.getElementById('ring-download').addEventListener('click', () => {
+    if (tabs.ring.geometry) downloadSTL(tabs.ring.geometry, 'ring.stl');
+  });
+
+  // Bracelet sliders
+  bindSlider('bracelet-radius', 'bracelet-radius-val', v => `${parseFloat(v).toFixed(1)} mm`, debouncedUpdateBracelet);
+  bindSlider('bracelet-count', 'bracelet-count-val', v => v, debouncedUpdateBracelet);
+  document.getElementById('bracelet-download').addEventListener('click', () => {
+    if (tabs.bracelet.geometry) downloadSTL(tabs.bracelet.geometry, 'bracelet.stl');
+  });
+
+  // Sleeve sliders
+  bindSlider('sleeve-count', 'sleeve-count-val', v => v, debouncedUpdateSleeve);
+  bindSlider('sleeve-rotations', 'sleeve-rotations-val', v => v, debouncedUpdateSleeve);
+  bindSlider('sleeve-scale', 'sleeve-scale-val', v => `${parseFloat(v).toFixed(2)}×`, debouncedUpdateSleeve);
+  document.getElementById('sleeve-download').addEventListener('click', () => {
+    if (tabs.sleeve.geometry) downloadSTL(tabs.sleeve.geometry, 'lighter-sleeve.stl');
+  });
+
+  // Project toolbar
+  document.getElementById('btn-save-project').addEventListener('click', saveProject);
+  document.getElementById('btn-load-project').addEventListener('click', () => {
+    document.getElementById('load-project-input').click();
+  });
+  document.getElementById('load-project-input').addEventListener('change', () => {
+    const input = document.getElementById('load-project-input');
+    if (input.files[0]) loadProject(input.files[0]);
+    input.value = '';
+  });
+  document.getElementById('btn-new-project').addEventListener('click', () => {
+    if (uploadedGeometry && !confirm('Start a new project? Unsaved changes will be lost.')) return;
+    newProject();
+  });
+
+  // Transform sliders
+  bindSlider('tx-scale', 'tx-scale-val', v => `${parseFloat(v).toFixed(2)}×`, () => {
+    transformState.scale = parseFloat(document.getElementById('tx-scale').value);
+    debouncedTransform();
+  });
+  bindSlider('tx-rotx', 'tx-rotx-val', v => `${v}°`, () => {
+    transformState.rotX = parseInt(document.getElementById('tx-rotx').value);
+    debouncedTransform();
+  });
+  bindSlider('tx-roty', 'tx-roty-val', v => `${v}°`, () => {
+    transformState.rotY = parseInt(document.getElementById('tx-roty').value);
+    debouncedTransform();
+  });
+  bindSlider('tx-rotz', 'tx-rotz-val', v => `${v}°`, () => {
+    transformState.rotZ = parseInt(document.getElementById('tx-rotz').value);
+    debouncedTransform();
+  });
+  document.getElementById('tx-reset').addEventListener('click', () => {
+    resetTransformSliders();
+    onTransformChanged();
+  });
+
+  // Load saved projects from server on startup
+  refreshProjectList();
+
+  animate();
+}
+
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,105 @@
+You are a senior full-stack developer and 3D geometry engineer. Build a local web application that lets users upload a 3D model and remix it into three downloadable objects. The app uses a Deno web server to serve the frontend and handle any server-side processing.
+
+## Technology Stack
+- **Runtime:** Deno (latest stable) with a deno.json task runner
+- **Server:** Deno's built-in HTTP server (std/http) — serve static files from a /public or /static directory, plus optional API endpoints
+- **Frontend:** Single HTML file with embedded CSS and JavaScript, served by the Deno server
+- **3D Library:** Three.js loaded from a CDN via importmap or ES module import from CDN (e.g., unpkg or jsdelivr) in the frontend
+- **All 3D computation happens client-side in the browser** using Three.js
+- No npm, no node_modules, no install step beyond what `deno task start` handles
+
+## Project Structure
+Deliver the following files:
+
+```
+project-root/
+  deno.json          # task definitions, imports map
+  server.ts           # Deno HTTP server entry point
+  public/
+    index.html        # frontend UI (HTML + CSS + JS)
+```
+
+## deno.json
+Define a `start` task that both caches dependencies and starts the server in one command:
+
+```json
+{
+  "tasks": {
+    "start": "deno cache server.ts && deno run --allow-net --allow-read server.ts"
+  }
+}
+```
+
+Running `deno task start` should be the ONLY command needed — it installs (caches) everything, then starts the server.
+
+## Server (server.ts)
+- Use Deno's std/http `serve` function to create an HTTP server on port 8000
+- Serve all files from the `public/` directory as static assets
+- Set correct Content-Type headers (text/html for .html, application/javascript for .js, etc.)
+- Listen on 0.0.0.0 so the app is accessible from other devices on the local network
+- Print a clear startup message to the console: "3D Object Remixer running at http://localhost:8000"
+- The server should handle MIME type detection for .stl and .obj file download responses if needed
+
+## Frontend (public/index.html)
+
+### 1. File Upload
+- Accept .stl and .obj file uploads via drag-and-drop and a file picker button
+- Use Three.js STLLoader and OBJLoader to parse the uploaded file into a BufferGeometry
+- Display the uploaded model in a Three.js viewport with orbit controls (rotate, pan, zoom)
+- Show basic stats: triangle count, bounding box dimensions (in mm)
+
+### 2. Ring Generator
+- Take the uploaded geometry and repeat it circularly around a vertical Y-axis
+- Default ring radius: 9mm (inner finger ring size), with a slider to adjust (6mm–15mm)
+- Default instance count: 12, with a slider to adjust (6–36)
+- Each instance is rotated evenly (360° / count) and translated outward by the radius
+- Merge all instances into a single geometry for export
+- Provide a live 3D preview of the ring in its own viewport
+
+### 3. Bracelet Generator
+- Identical logic to the ring generator but with a larger default radius
+- Default bracelet radius: 35mm, with a slider to adjust (25mm–45mm)
+- Same instance count controls as the ring
+- Live 3D preview in its own viewport
+
+### 4. Lighter Sleeve Generator
+- Generate an elliptical cylinder container with:
+  - Semi-major axis (X): 12.95mm (half of 25.9mm)
+  - Semi-minor axis (Z): 7.2mm (half of 14.4mm)
+  - Wall thickness: 1.2mm (generate outer and inner elliptical cylinders, subtract inner from outer via CSG or by building a hollow shell)
+  - Extrusion height: 70.5mm
+  - The sleeve should have a closed bottom and open top
+- Take the uploaded geometry and place it along a helix spiral path wrapping around the outer surface of the sleeve from bottom to top
+  - Helix parameters: 3 full rotations from bottom to top, ~12 instances per rotation (36 total), evenly spaced along the height
+  - Each instance is positioned at the helix point and oriented to face outward from the sleeve surface (normal-aligned)
+- If the uploaded object is too large, uniformly scale it down so it fits aesthetically on the sleeve surface without excessive overhang
+- Live 3D preview in its own viewport
+
+### 5. Download
+- Each generated object (ring, bracelet, sleeve) has its own "Download STL" button
+- Use THREE.STLExporter to convert the merged geometry to binary STL
+- Trigger a browser download with a meaningful filename (e.g., "ring.stl", "bracelet.stl", "lighter-sleeve.stl")
+- The downloaded STL must be manifold and printable — merge all geometries per object before export
+
+## UI/UX Requirements
+- Tab-based navigation: tabs for "Ring", "Bracelet", "Lighter Sleeve", plus an "Upload" area always visible at the top
+- Each tab has its own dedicated Three.js viewport for its preview
+- Sliders for adjustable parameters update the preview in real time (debounced at 100ms)
+- Clear visual distinction between the original uploaded model and the generated outputs
+- Units displayed in millimeters throughout the UI
+- Dark theme by default, clean and minimal design
+- Responsive layout that works on desktop screens
+
+## Implementation Notes
+- When merging geometries, use BufferGeometryUtils.mergeGeometries() to produce a single manifold mesh for STL export
+- For the elliptical sleeve wall, generate the geometry procedurally: create an elliptical cylinder outer shell, then an inner shell scaled down by wall thickness, flip inner normals, and merge both into one closed hollow shell
+- For helix placement on the elliptical sleeve surface, compute points using parametric equations:
+  - x(t) = a * cos(t), z(t) = b * sin(t), y(t) = height * t / (2π * rotations)
+  - Surface normal at each point: normalize( (cos(t)/a, 0, sin(t)/b) ) — this accounts for elliptical curvature so instances always face outward
+  - Each instance's up-vector should align with the surface normal, and its forward-vector tangent to the helix path
+- Handle edge cases: uploaded model with zero triangles, extremely large triangle counts (decimate or warn if >50k tris), non-manifold input geometry
+- Show a loading spinner during heavy geometry operations (parsing, merging, STL export)
+- Use requestAnimationFrame for smooth rendering in all viewports
+- Properly dispose geometries and materials when switching tabs or re-uploading (call geometry.dispose(), material.dispose())
+
+The user must be able to clone/unzip the project, run `deno task start`, open their browser, and immediately use the app. Write clean, well-organized code — separate concerns into clear functions for upload, ring generation, bracelet generation, sleeve generation, and STL export. Include inline comments only where the geometry math is non-obvious.
