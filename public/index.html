@@ -474,6 +474,7 @@
     <div class="tab-stats">
       <span>Total triangles: <span class="val" id="ring-tris">—</span></span>
       <span>Ring diameter: <span class="val" id="ring-dia">—</span></span>
+      <span>Spacing: <span class="val" id="ring-spacing">—</span></span>
     </div>
   </div>
 
@@ -497,6 +498,7 @@
     <div class="tab-stats">
       <span>Total triangles: <span class="val" id="bracelet-tris">—</span></span>
       <span>Bracelet diameter: <span class="val" id="bracelet-dia">—</span></span>
+      <span>Spacing: <span class="val" id="bracelet-spacing">—</span></span>
     </div>
   </div>
 
@@ -1072,9 +1074,13 @@ function newProject() {
   // Reset tab stats
   document.getElementById('ring-tris').textContent = '—';
   document.getElementById('ring-dia').textContent = '—';
+  const ringSp = document.getElementById('ring-spacing');
+  ringSp.textContent = '—'; ringSp.style.color = '';
   document.getElementById('ring-download').disabled = true;
   document.getElementById('bracelet-tris').textContent = '—';
   document.getElementById('bracelet-dia').textContent = '—';
+  const brSp = document.getElementById('bracelet-spacing');
+  brSp.textContent = '—'; brSp.style.color = '';
   document.getElementById('bracelet-download').disabled = true;
   document.getElementById('sleeve-shell-tris').textContent = '—';
   document.getElementById('sleeve-pat-tris').textContent = '—';
@@ -1240,6 +1246,29 @@ function getBBoxString(geom) {
   return `${sx} × ${sy} × ${sz}`;
 }
 
+// ===== CIRCULAR SPACING CHECK =====
+// Approximate gap between adjacent instances along the circle: chord between
+// centers minus the instance width along the tangent (Z) direction.
+// gap > 0 = visible gap; gap < 0 = bounding boxes overlap (parts touch).
+function updateSpacingStat(elId, sourceGeom, radius, count) {
+  sourceGeom.computeBoundingBox();
+  const width = sourceGeom.boundingBox.max.z - sourceGeom.boundingBox.min.z;
+  const chord = 2 * radius * Math.sin(Math.PI / count);
+  const gap = chord - width;
+  const el = document.getElementById(elId);
+  const TOL = 0.05;
+  if (gap > TOL) {
+    el.textContent = `${gap.toFixed(2)} mm gap`;
+    el.style.color = '#88dd88';
+  } else if (gap < -TOL) {
+    el.textContent = `${(-gap).toFixed(2)} mm overlap`;
+    el.style.color = '#ff6a6a';
+  } else {
+    el.textContent = 'touching';
+    el.style.color = '#ddcc55';
+  }
+}
+
 // ===== CIRCULAR ARRAY (Ring & Bracelet) =====
 function generateCircularArray(sourceGeom, radius, count) {
   const geometries = [];
@@ -1388,6 +1417,7 @@ function updateRing() {
 
     document.getElementById('ring-tris').textContent = getTriangleCount(state.geometry).toLocaleString();
     document.getElementById('ring-dia').textContent = `${(radius * 2).toFixed(1)} mm`;
+    updateSpacingStat('ring-spacing', normalized, radius, count);
     document.getElementById('ring-download').disabled = false;
     document.getElementById('ring-overlay').classList.remove('visible');
   }, 30);
@@ -1420,6 +1450,7 @@ function updateBracelet() {
 
     document.getElementById('bracelet-tris').textContent = getTriangleCount(state.geometry).toLocaleString();
     document.getElementById('bracelet-dia').textContent = `${(radius * 2).toFixed(1)} mm`;
+    updateSpacingStat('bracelet-spacing', normalized, radius, count);
     document.getElementById('bracelet-download').disabled = false;
     document.getElementById('bracelet-overlay').classList.remove('visible');
   }, 30);
