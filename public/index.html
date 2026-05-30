@@ -99,25 +99,67 @@
   .transform-bar .tx-group {
     display: flex;
     align-items: center;
-    gap: 3px;
+    gap: 2px;
   }
   .transform-bar label {
     color: #666;
     white-space: nowrap;
     font-size: 10px;
-    min-width: 22px;
+    min-width: 26px;
   }
-  .transform-bar input[type=range] {
-    width: 56px;
-    accent-color: #6a6aff;
+  .transform-bar input[type=number] {
+    width: 58px;
+    background: #1a1a30;
+    border: 1px solid #3a3a5c;
+    color: #c8c8ff;
+    padding: 2px 3px;
+    border-radius: 4px;
+    font-size: 11px;
+    text-align: center;
+    font-family: inherit;
+    -moz-appearance: textfield;
+  }
+  .transform-bar input[type=number]::-webkit-inner-spin-button,
+  .transform-bar input[type=number]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  .transform-bar input[type=number]:focus {
+    border-color: #6a6aff;
+    outline: none;
+  }
+  .transform-bar .tx-step {
+    background: #1a1a30;
+    border: 1px solid #3a3a5c;
+    color: #888;
+    width: 20px;
+    height: 20px;
+    border-radius: 3px;
     cursor: pointer;
+    font-size: 11px;
+    line-height: 1;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all .15s;
+    font-family: inherit;
   }
-  .transform-bar .tx-val {
-    color: #aaaaff;
-    min-width: 32px;
-    text-align: right;
-    font-size: 10px;
+  .transform-bar .tx-step:hover { border-color: #6a6aff; color: #c8c8ff; background: #222240; }
+  .transform-bar .tx-quick {
+    background: #1a1a30;
+    border: 1px solid #3a3a5c;
+    color: #777;
+    padding: 1px 5px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 9px;
+    font-weight: 600;
+    transition: all .15s;
+    font-family: inherit;
+    white-space: nowrap;
   }
+  .transform-bar .tx-quick:hover { border-color: #6a6aff; color: #c8c8ff; background: #222240; }
   .transform-bar .tx-reset {
     background: none;
     border: 1px solid #3a3a5a;
@@ -126,10 +168,11 @@
     border-radius: 4px;
     cursor: pointer;
     font-size: 10px;
-    margin-left: auto;
     transition: all .2s;
+    white-space: nowrap;
   }
   .transform-bar .tx-reset:hover { border-color: #6a6aff; color: #aaaaff; }
+  .transform-bar .tx-spacer { width: 4px; flex: none; }
 
   /* Tabs */
   .tab-nav {
@@ -400,26 +443,39 @@
         <span>File: <span class="val" id="stat-filename">No model loaded</span></span>
       </div>
       <div class="transform-bar" id="transform-bar" style="display:none">
-        <span style="color:#555;font-size:10px;margin-right:4px">Transform</span>
+        <span style="color:#555;font-size:10px;margin-right:2px">Transform</span>
         <div class="tx-group">
           <label>Scale</label>
-          <input type="range" id="tx-scale" min="-100" max="100" value="1" step="0.5">
-          <span class="tx-val" id="tx-scale-val">1.00×</span>
+          <input type="number" id="tx-scale" value="1" min="0.01" max="100" step="0.01">
+          <button class="tx-step" data-target="tx-scale" data-delta="-0.1" title="−0.1">−</button>
+          <button class="tx-step" data-target="tx-scale" data-delta="0.1" title="+0.1">+</button>
+          <button class="tx-quick" data-target="tx-scale" data-value="0.5">½</button>
+          <button class="tx-quick" data-target="tx-scale" data-value="2">2×</button>
         </div>
+        <span class="tx-spacer"></span>
         <div class="tx-group">
           <label>RX</label>
-          <input type="range" id="tx-rotx" min="0" max="360" value="0" step="1">
-          <span class="tx-val" id="tx-rotx-val">0°</span>
+          <input type="number" id="tx-rotx" value="0" min="0" max="360" step="1">
+          <button class="tx-step" data-target="tx-rotx" data-delta="-1" title="−1°">−</button>
+          <button class="tx-step" data-target="tx-rotx" data-delta="1" title="+1°">+</button>
+          <button class="tx-quick" data-target="tx-rotx" data-value="0">0°</button>
+          <button class="tx-quick" data-target="tx-rotx" data-value="90">90°</button>
         </div>
         <div class="tx-group">
           <label>RY</label>
-          <input type="range" id="tx-roty" min="0" max="360" value="0" step="1">
-          <span class="tx-val" id="tx-roty-val">0°</span>
+          <input type="number" id="tx-roty" value="0" min="0" max="360" step="1">
+          <button class="tx-step" data-target="tx-roty" data-delta="-1" title="−1°">−</button>
+          <button class="tx-step" data-target="tx-roty" data-delta="1" title="+1°">+</button>
+          <button class="tx-quick" data-target="tx-roty" data-value="0">0°</button>
+          <button class="tx-quick" data-target="tx-roty" data-value="90">90°</button>
         </div>
         <div class="tx-group">
           <label>RZ</label>
-          <input type="range" id="tx-rotz" min="0" max="360" value="0" step="1">
-          <span class="tx-val" id="tx-rotz-val">0°</span>
+          <input type="number" id="tx-rotz" value="0" min="0" max="360" step="1">
+          <button class="tx-step" data-target="tx-rotz" data-delta="-1" title="−1°">−</button>
+          <button class="tx-step" data-target="tx-rotz" data-delta="1" title="+1°">+</button>
+          <button class="tx-quick" data-target="tx-rotz" data-value="0">0°</button>
+          <button class="tx-quick" data-target="tx-rotz" data-value="90">90°</button>
         </div>
         <button class="tx-reset" id="tx-auto" title="Auto-orient using principal axes (PCA)">Auto-orient</button>
         <button class="tx-reset" id="tx-reset">Reset</button>
@@ -451,6 +507,7 @@
   <div class="tab-nav">
     <button class="tab-btn active" data-tab="ring">Ring</button>
     <button class="tab-btn" data-tab="bracelet">Bracelet</button>
+    <button class="tab-btn" data-tab="line">Line</button>
     <button class="tab-btn" data-tab="sleeve">Lighter Sleeve</button>
   </div>
 
@@ -459,7 +516,7 @@
     <div class="tab-controls">
       <div class="control-group">
         <label>Radius <span class="val" id="ring-radius-val">9.0 mm</span></label>
-        <input type="range" id="ring-radius" min="5" max="100" value="9" step="0.5">
+        <input type="range" id="ring-radius" min="5" max="50" value="9" step="0.5">
       </div>
       <div class="control-group">
         <label>Instances <span class="val" id="ring-count-val">12</span></label>
@@ -483,7 +540,7 @@
     <div class="tab-controls">
       <div class="control-group">
         <label>Radius <span class="val" id="bracelet-radius-val">35.0 mm</span></label>
-        <input type="range" id="bracelet-radius" min="5" max="100" value="35" step="0.5">
+        <input type="range" id="bracelet-radius" min="5" max="50" value="35" step="0.5">
       </div>
       <div class="control-group">
         <label>Instances <span class="val" id="bracelet-count-val">12</span></label>
@@ -499,6 +556,30 @@
       <span>Total triangles: <span class="val" id="bracelet-tris">—</span></span>
       <span>Bracelet diameter: <span class="val" id="bracelet-dia">—</span></span>
       <span>Spacing: <span class="val" id="bracelet-spacing">—</span></span>
+    </div>
+  </div>
+
+  <!-- Line Panel -->
+  <div class="tab-panel" id="panel-line">
+    <div class="tab-controls">
+      <div class="control-group">
+        <label>Length <span class="val" id="line-length-val">60.0 mm</span></label>
+        <input type="range" id="line-length" min="10" max="200" value="60" step="1">
+      </div>
+      <div class="control-group">
+        <label>Instances <span class="val" id="line-count-val">6</span></label>
+        <input type="range" id="line-count" min="2" max="50" value="6" step="1">
+      </div>
+      <button class="tab-download" id="line-download" disabled>Download Line STL</button>
+    </div>
+    <div class="tab-viewport" id="line-viewport">
+      <canvas id="line-canvas"></canvas>
+      <div class="overlay" id="line-overlay">Processing...</div>
+    </div>
+    <div class="tab-stats">
+      <span>Total triangles: <span class="val" id="line-tris">—</span></span>
+      <span>Length: <span class="val" id="line-len">—</span></span>
+      <span>Spacing: <span class="val" id="line-spacing">—</span></span>
     </div>
   </div>
 
@@ -561,6 +642,7 @@ const MAX_TRIS_WARN = 50000;
 const tabs = {
   ring:    { scene: null, camera: null, controls: null, renderer: null, mesh: null, geometry: null, canvasId: 'ring-canvas', viewportId: 'ring-viewport' },
   bracelet:{ scene: null, camera: null, controls: null, renderer: null, mesh: null, geometry: null, canvasId: 'bracelet-canvas', viewportId: 'bracelet-viewport' },
+  line:    { scene: null, camera: null, controls: null, renderer: null, mesh: null, geometry: null, canvasId: 'line-canvas', viewportId: 'line-viewport' },
   sleeve:  { scene: null, camera: null, controls: null, renderer: null, mesh: null, geometry: null, canvasId: 'sleeve-canvas', viewportId: 'sleeve-viewport',
              shellMesh: null, shellGeometry: null, patternMesh: null, patternGeometry: null },
 };
@@ -630,6 +712,7 @@ function onTransformChanged() {
 
   updateRing();
   updateBracelet();
+  updateLine();
   updateSleeve();
 }
 
@@ -639,15 +722,11 @@ function showTransformBar() {
 function hideTransformBar() {
   document.getElementById('transform-bar').style.display = 'none';
 }
-function resetTransformSliders() {
+function resetTransformInputs() {
   document.getElementById('tx-scale').value = 1;
-  document.getElementById('tx-scale-val').textContent = '1.00×';
   document.getElementById('tx-rotx').value = 0;
-  document.getElementById('tx-rotx-val').textContent = '0°';
   document.getElementById('tx-roty').value = 0;
-  document.getElementById('tx-roty-val').textContent = '0°';
   document.getElementById('tx-rotz').value = 0;
-  document.getElementById('tx-rotz-val').textContent = '0°';
   transformState = { scale: 1, rotX: 0, rotY: 0, rotZ: 0 };
 }
 
@@ -833,15 +912,11 @@ async function loadProjectFromServer(id) {
         rotZ: state.transform.rotZ ?? 0,
       };
       document.getElementById('tx-scale').value = transformState.scale;
-      document.getElementById('tx-scale-val').textContent = `${transformState.scale.toFixed(2)}×`;
       document.getElementById('tx-rotx').value = transformState.rotX;
-      document.getElementById('tx-rotx-val').textContent = `${transformState.rotX}°`;
       document.getElementById('tx-roty').value = transformState.rotY;
-      document.getElementById('tx-roty-val').textContent = `${transformState.rotY}°`;
       document.getElementById('tx-rotz').value = transformState.rotZ;
-      document.getElementById('tx-rotz-val').textContent = `${transformState.rotZ}°`;
     } else {
-      resetTransformSliders();
+      resetTransformInputs();
     }
 
     uploadedGeometry = applyTransform();
@@ -950,15 +1025,11 @@ async function loadProject(file) {
         rotZ: state.transform.rotZ ?? 0,
       };
       document.getElementById('tx-scale').value = transformState.scale;
-      document.getElementById('tx-scale-val').textContent = `${transformState.scale.toFixed(2)}×`;
       document.getElementById('tx-rotx').value = transformState.rotX;
-      document.getElementById('tx-rotx-val').textContent = `${transformState.rotX}°`;
       document.getElementById('tx-roty').value = transformState.rotY;
-      document.getElementById('tx-roty-val').textContent = `${transformState.rotY}°`;
       document.getElementById('tx-rotz').value = transformState.rotZ;
-      document.getElementById('tx-rotz-val').textContent = `${transformState.rotZ}°`;
     } else {
-      resetTransformSliders();
+      resetTransformInputs();
     }
 
     // Apply transform to get display geometry
@@ -1045,7 +1116,7 @@ function newProject() {
   if (bboxHelper) { if (bboxHelper.geometry) bboxHelper.geometry.dispose(); uploadScene.remove(bboxHelper); bboxHelper = null; }
 
   hideTransformBar();
-  resetTransformSliders();
+  resetTransformInputs();
 
   // Reset stats
   document.getElementById('stat-tris').textContent = '—';
@@ -1231,7 +1302,7 @@ function autoOrientGeometry() {
   const rot = new THREE.Matrix4().makeBasis(xAxis, yAxis, zAxis).transpose();
   rawUploadedGeometry.applyMatrix4(rot);
   centerGeometryAtOrigin(rawUploadedGeometry);
-  resetTransformSliders();
+  resetTransformInputs();
   onTransformChanged();
 }
 
@@ -1291,6 +1362,75 @@ function generateCircularArray(sourceGeom, radius, count) {
   const merged = mergeGeometries(geometries);
   merged.computeVertexNormals();
   return merged;
+}
+
+// ===== LINEAR ARRAY (Line) =====
+function generateLinearArray(sourceGeom, length, count) {
+  const geometries = [];
+  for (let i = 0; i < count; i++) {
+    const t = count === 1 ? 0 : (i / (count - 1)) * length - length / 2;
+    const inst = sourceGeom.clone();
+    inst.translate(t, 0, 0);
+    geometries.push(inst);
+  }
+  const merged = mergeGeometries(geometries);
+  merged.computeVertexNormals();
+  return merged;
+}
+
+// Approximate gap between adjacent instances along the line: center-to-center
+// distance minus the instance width along the line (X) direction.
+function updateLineSpacingStat(elId, sourceGeom, length, count) {
+  sourceGeom.computeBoundingBox();
+  const width = sourceGeom.boundingBox.max.x - sourceGeom.boundingBox.min.x;
+  const spacing = count > 1 ? length / (count - 1) : 0;
+  const gap = spacing - width;
+  const el = document.getElementById(elId);
+  const TOL = 0.05;
+  if (gap > TOL) {
+    el.textContent = `${gap.toFixed(2)} mm gap`;
+    el.style.color = '#88dd88';
+  } else if (gap < -TOL) {
+    el.textContent = `${(-gap).toFixed(2)} mm overlap`;
+    el.style.color = '#ff6a6a';
+  } else {
+    el.textContent = 'touching';
+    el.style.color = '#ddcc55';
+  }
+}
+
+// ===== LINE GENERATOR =====
+function updateLine() {
+  const state = tabs.line;
+  if (!uploadedGeometry || !state.renderer) return;
+
+  const length = parseFloat(document.getElementById('line-length').value);
+  const count = parseInt(document.getElementById('line-count').value);
+
+  document.getElementById('line-overlay').classList.add('visible');
+  setTimeout(() => {
+    const normalized = normalizeGeometry(uploadedGeometry);
+    if (state.geometry) state.geometry.dispose();
+    state.geometry = generateLinearArray(normalized, length, count);
+
+    if (state.mesh) { state.mesh.geometry.dispose(); state.scene.remove(state.mesh); }
+    const mat = new THREE.MeshStandardMaterial({ color: 0xd4a853, roughness: 0.3, metalness: 0.2, flatShading: false });
+    state.mesh = new THREE.Mesh(state.geometry, mat);
+    state.scene.add(state.mesh);
+
+    // Fit camera
+    const d = length * 1.2;
+    state.camera.position.set(0, d * 0.4, d);
+    state.camera.lookAt(0, 0, 0);
+    state.controls.target.set(0, 0, 0);
+    state.controls.update();
+
+    document.getElementById('line-tris').textContent = getTriangleCount(state.geometry).toLocaleString();
+    document.getElementById('line-len').textContent = `${length.toFixed(0)} mm`;
+    updateLineSpacingStat('line-spacing', normalized, length, count);
+    document.getElementById('line-download').disabled = false;
+    document.getElementById('line-overlay').classList.remove('visible');
+  }, 30);
 }
 
 // ===== ELLIPTICAL SLEEVE SHELL =====
@@ -1531,9 +1671,10 @@ function updateSleeve() {
   }, 30);
 }
 
-// Deounced updaters
+// Debounced updaters
 const debouncedUpdateRing = debounce(updateRing, 120);
 const debouncedUpdateBracelet = debounce(updateBracelet, 120);
+const debouncedUpdateLine = debounce(updateLine, 120);
 const debouncedUpdateSleeve = debounce(updateSleeve, 120);
 
 // ===== UPLOAD HANDLING =====
@@ -1584,7 +1725,7 @@ async function handleFile(file) {
     if (rawUploadedGeometry) rawUploadedGeometry.dispose();
     centerGeometryAtOrigin(geometry);
     rawUploadedGeometry = geometry;
-    resetTransformSliders();
+    resetTransformInputs();
 
     // Apply current transform (identity on fresh upload)
     uploadedGeometry = applyTransform();
@@ -1616,6 +1757,7 @@ async function handleFile(file) {
     // Regenerate all tabs
     updateRing();
     updateBracelet();
+    updateLine();
     updateSleeve();
   } catch (err) {
     console.error(err);
@@ -1644,6 +1786,7 @@ function switchTab(tabName) {
     if (uploadedGeometry) {
       if (tabName === 'ring') updateRing();
       else if (tabName === 'bracelet') updateBracelet();
+      else if (tabName === 'line') updateLine();
       else if (tabName === 'sleeve') updateSleeve();
     }
   }
@@ -1761,6 +1904,13 @@ function init() {
     if (tabs.bracelet.geometry) downloadSTL(tabs.bracelet.geometry, 'bracelet.stl');
   });
 
+  // Line sliders
+  bindSlider('line-length', 'line-length-val', v => `${parseFloat(v).toFixed(1)} mm`, debouncedUpdateLine);
+  bindSlider('line-count', 'line-count-val', v => v, debouncedUpdateLine);
+  document.getElementById('line-download').addEventListener('click', () => {
+    if (tabs.line.geometry) downloadSTL(tabs.line.geometry, 'line.stl');
+  });
+
   // Sleeve sliders
   bindSlider('sleeve-count', 'sleeve-count-val', v => v, debouncedUpdateSleeve);
   bindSlider('sleeve-rotations', 'sleeve-rotations-val', v => v, debouncedUpdateSleeve);
@@ -1784,25 +1934,59 @@ function init() {
     newProject();
   });
 
-  // Transform sliders
-  bindSlider('tx-scale', 'tx-scale-val', v => `${parseFloat(v).toFixed(2)}×`, () => {
-    transformState.scale = parseFloat(document.getElementById('tx-scale').value);
+  // Transform number inputs
+  function bindNumberInput(id, onChange) {
+    const input = document.getElementById(id);
+    input.addEventListener('input', () => onChange());
+  }
+
+  bindNumberInput('tx-scale', () => {
+    const v = parseFloat(document.getElementById('tx-scale').value);
+    if (isNaN(v)) return;
+    transformState.scale = v;
     debouncedTransform();
   });
-  bindSlider('tx-rotx', 'tx-rotx-val', v => `${v}°`, () => {
-    transformState.rotX = parseInt(document.getElementById('tx-rotx').value);
+  bindNumberInput('tx-rotx', () => {
+    const v = parseInt(document.getElementById('tx-rotx').value);
+    if (isNaN(v)) return;
+    transformState.rotX = v;
     debouncedTransform();
   });
-  bindSlider('tx-roty', 'tx-roty-val', v => `${v}°`, () => {
-    transformState.rotY = parseInt(document.getElementById('tx-roty').value);
+  bindNumberInput('tx-roty', () => {
+    const v = parseInt(document.getElementById('tx-roty').value);
+    if (isNaN(v)) return;
+    transformState.rotY = v;
     debouncedTransform();
   });
-  bindSlider('tx-rotz', 'tx-rotz-val', v => `${v}°`, () => {
-    transformState.rotZ = parseInt(document.getElementById('tx-rotz').value);
+  bindNumberInput('tx-rotz', () => {
+    const v = parseInt(document.getElementById('tx-rotz').value);
+    if (isNaN(v)) return;
+    transformState.rotZ = v;
     debouncedTransform();
+  });
+
+  // Step buttons (+/- fine adjustment)
+  document.querySelectorAll('.tx-step').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const input = document.getElementById(btn.dataset.target);
+      const delta = parseFloat(btn.dataset.delta);
+      const newVal = parseFloat(input.value) + delta;
+      const clamped = Math.min(parseFloat(input.max), Math.max(parseFloat(input.min), newVal));
+      input.value = parseFloat(clamped.toFixed(6));
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+  });
+
+  // Quick preset buttons
+  document.querySelectorAll('.tx-quick').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const input = document.getElementById(btn.dataset.target);
+      input.value = btn.dataset.value;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
   });
   document.getElementById('tx-reset').addEventListener('click', () => {
-    resetTransformSliders();
+    resetTransformInputs();
     onTransformChanged();
   });
   document.getElementById('tx-auto').addEventListener('click', autoOrientGeometry);
